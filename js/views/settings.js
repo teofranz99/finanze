@@ -9,7 +9,8 @@ import { newPasswordFields, wireNewPassword, showRecoveryKeySheet } from '../ui/
 import { getSettings, updateSettings, DEFAULT_SETTINGS, PHONE_TABS, WIDE_TABS_MIN, WIDE_TABS_MAX } from '../settings.js';
 import { sectionById } from '../sections.js';
 import { biometricName } from '../platform.js';
-import { applyTheme } from '../theme.js';
+import { applyAppearance, currentPalette } from '../theme.js';
+import { PALETTES, getPalette } from '../palettes.js';
 import { lockNow } from '../autolock.js';
 import { APP_VERSION } from '../version.js';
 import * as V from '../vault.js';
@@ -22,6 +23,7 @@ export function settingsView(el, rest) {
     case 'barra': return tabbarPage(el);
     case 'sicurezza': return securityPage(el);
     case 'backup': return backupPage(el);
+    case 'palette': return palettePage(el);
     default: return rootPage(el);
   }
 }
@@ -41,21 +43,24 @@ function rootPage(el) {
       body: html`
         ${group({
           rows: [
-            navRow({ href: '#/impostazioni/barra', icon: 'tabbar', color: '#007AFF', label: 'Barra delle sezioni' }),
-            navRow({ href: '#/impostazioni/sicurezza', icon: 'lock', color: '#34C759', label: 'Sicurezza e sblocco' }),
-            navRow({ href: '#/impostazioni/backup', icon: 'cloud-up', color: '#30B0C7', label: 'Backup e sincronizzazione', detail: lastBackup ? relativeTime(lastBackup) : 'Mai' }),
+            navRow({ href: '#/impostazioni/barra', icon: 'tabbar', color: 'var(--s1)', label: 'Barra delle sezioni' }),
+            navRow({ href: '#/impostazioni/sicurezza', icon: 'lock', color: 'var(--s2)', label: 'Sicurezza e sblocco' }),
+            navRow({ href: '#/impostazioni/backup', icon: 'cloud-up', color: 'var(--s5)', label: 'Backup e sincronizzazione', detail: lastBackup ? relativeTime(lastBackup) : 'Mai' }),
           ],
         })}
         ${group({
           title: 'Aspetto',
-          rows: html`<div class="row static">${rowIcon('contrast', '#5856D6')}<span class="row-label">Tema</span>${segmented('theme', [['auto', 'Auto'], ['light', 'Chiaro'], ['dark', 'Scuro']], theme || 'auto')}</div>`,
+          rows: [
+            navRow({ href: '#/impostazioni/palette', icon: 'palette', color: 'var(--s7)', label: 'Palette', detail: getPalette(currentPalette()).name }),
+            html`<div class="row static">${rowIcon('contrast', 'var(--s3)')}<span class="row-label">Tema</span>${segmented('theme', [['auto', 'Auto'], ['light', 'Chiaro'], ['dark', 'Scuro']], theme || 'auto')}</div>`,
+          ],
           footer: 'Auto segue l\'impostazione chiaro/scuro del dispositivo.',
         })}
         ${group({
           title: 'Informazioni',
           rows: [
-            infoRow({ icon: 'info', color: '#8E8E93', label: 'Versione', detail: APP_VERSION }),
-            infoRow({ icon: 'shield', color: '#8E8E93', label: 'Archivio creato il', detail: h ? formatDate(h.createdAt) : '—' }),
+            infoRow({ icon: 'info', color: 'var(--s10)', label: 'Versione', detail: APP_VERSION }),
+            infoRow({ icon: 'shield', color: 'var(--s10)', label: 'Archivio creato il', detail: h ? formatDate(h.createdAt) : '—' }),
           ],
           footer: 'I dati restano solo sui tuoi dispositivi, cifrati con AES-256. Nessun server, nessun account.',
         })}
@@ -66,12 +71,53 @@ function rootPage(el) {
     off = enhancePage(el);
     wireSegmented(el, 'theme', async (v) => {
       await DB.metaSet('theme', v === 'auto' ? null : v);
-      applyTheme(v);
+      applyAppearance({ theme: v });
     });
     el.querySelector('[data-action=wipe]').onclick = wipeAll;
   };
   draw();
   return () => off?.();
+}
+
+// ---------------------------------------------------------------- Palette
+function palettePage(el) {
+  const cur = currentPalette();
+  setHtml(el, page({
+    title: 'Palette',
+    back: BACK,
+    large: false,
+    body: html`
+      <p class="page-intro">Scegli i colori dell'app. Ogni palette ha una versione chiara e una scura, che segue il tema.</p>
+      <div class="palette-grid">
+        ${PALETTES.map((p) => html`
+          <button type="button" class="palette-card ${p.id === cur ? 'selected' : ''}" data-palette="${p.id}" aria-pressed="${p.id === cur ? 'true' : 'false'}">
+            <span class="pal-hero" style="background:linear-gradient(135deg, ${p.hero[0]}, ${p.hero[1]} 55%, ${p.hero[2]})">
+              <span class="pal-check">${icon('check')}</span>
+              <span class="pal-modes" title="Chiaro e scuro">
+                <i style="background:${p.light.bg};border-color:${p.light.tint}"></i>
+                <i style="background:${p.dark.bg};border-color:${p.dark.tint}"></i>
+              </span>
+            </span>
+            <span class="pal-dots">${p.sec.slice(0, 7).map((c) => html`<i style="background:${c}"></i>`)}</span>
+            <span class="pal-name">${p.name}</span>
+            <span class="pal-desc">${p.desc}</span>
+          </button>`)}
+      </div>`,
+  }));
+  const off = enhancePage(el);
+  el.querySelector('.palette-grid').addEventListener('click', async (e) => {
+    const card = e.target.closest('[data-palette]');
+    if (!card) return;
+    const id = card.dataset.palette;
+    for (const c of el.querySelectorAll('.palette-card')) {
+      const on = c === card;
+      c.classList.toggle('selected', on);
+      c.setAttribute('aria-pressed', on ? 'true' : 'false');
+    }
+    applyAppearance({ palette: id });
+    await DB.metaSet('palette', id);
+  });
+  return off;
 }
 
 async function wipeAll() {
@@ -239,12 +285,12 @@ function securityPage(el) {
         ${group({
           title: 'Sblocco',
           rows: [
-            toggleRow({ name: 'bio', icon: 'faceid', color: '#34C759', label: `Sblocca con ${bio}`, checked: !!pk, disabled: !canBio && !pk }),
+            toggleRow({ name: 'bio', icon: 'faceid', color: 'var(--s2)', label: `Sblocca con ${bio}`, checked: !!pk, disabled: !canBio && !pk }),
             selectRow({
-              name: 'autolock', icon: 'timer', color: '#FF9500', label: 'Blocco automatico', value: s.autoLockMinutes,
+              name: 'autolock', icon: 'timer', color: 'var(--s4)', label: 'Blocco automatico', value: s.autoLockMinutes,
               options: [[1, 'Dopo 1 minuto'], [2, 'Dopo 2 minuti'], [3, 'Dopo 3 minuti'], [5, 'Dopo 5 minuti'], [10, 'Dopo 10 minuti'], [15, 'Dopo 15 minuti']],
             }),
-            buttonRow({ action: 'lock', icon: 'lock', color: '#8E8E93', label: 'Blocca ora' }),
+            buttonRow({ action: 'lock', icon: 'lock', color: 'var(--s10)', label: 'Blocca ora' }),
           ],
           footer: canBio || pk
             ? `${bio[0].toUpperCase()}${bio.slice(1)} usa una passkey di questo dispositivo per aprire la chiave di cifratura. L'app si blocca anche quando ci torni dopo il tempo scelto.`
@@ -253,8 +299,8 @@ function securityPage(el) {
         ${group({
           title: 'Password e recupero',
           rows: [
-            buttonRow({ action: 'password', icon: 'key', color: '#007AFF', label: 'Cambia la password principale' }),
-            buttonRow({ action: 'recovery', icon: 'shield', color: '#FF9500', label: 'Genera una nuova chiave di recupero' }),
+            buttonRow({ action: 'password', icon: 'key', color: 'var(--s1)', label: 'Cambia la password principale' }),
+            buttonRow({ action: 'recovery', icon: 'shield', color: 'var(--s4)', label: 'Genera una nuova chiave di recupero' }),
           ],
           footer: 'La chiave di cifratura è protetta dalla password (PBKDF2, 600.000 iterazioni) e dalla chiave di recupero. Senza una delle due i dati non si possono leggere.',
         })}`,
@@ -360,11 +406,11 @@ function backupPage(el) {
       body: html`
         <div class="backup-actions">
           <button type="button" class="action-tile" data-action="save">
-            <span class="tile-icon" style="--c:#007AFF">${icon('cloud-up')}</span>
+            <span class="tile-icon" style="--c:var(--s1)">${icon('cloud-up')}</span>
             <b>Salva backup</b><span>Esporta tutto in un file cifrato</span>
           </button>
           <button type="button" class="action-tile" data-action="load">
-            <span class="tile-icon" style="--c:#34C759">${icon('cloud-down')}</span>
+            <span class="tile-icon" style="--c:var(--s2)">${icon('cloud-down')}</span>
             <b>Aggiorna file</b><span>Unisci il backup più recente</span>
           </button>
         </div>

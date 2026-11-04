@@ -1,28 +1,38 @@
 /* Finanze — stile ispirato a iOS: colori di sistema, vetro smerigliato, angoli arrotondati. */
 
 /* ------------------------------------------------------------ Colori */
+/* Palette autunnale: crema calda, zucca, ruggine, bordeaux, oliva. */
 :root {
-  --bg: #f2f2f7;
-  --bg-elev: #ffffff;
-  --bg-elev2: #f2f2f7;
-  --fill: rgba(120, 120, 128, 0.12);
-  --fill2: rgba(120, 120, 128, 0.2);
-  --label: #000000;
-  --label2: rgba(60, 60, 67, 0.6);
-  --label3: rgba(60, 60, 67, 0.3);
-  --sep: rgba(60, 60, 67, 0.22);
-  --tint: #007aff;
-  --green: #34c759;
-  --red: #ff3b30;
-  --orange: #ff9500;
-  --glass: rgba(249, 249, 249, 0.74);
-  --glass-strong: rgba(255, 255, 255, 0.82);
-  --glass-border: rgba(0, 0, 0, 0.1);
-  --seg-on: #ffffff;
-  --shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 6px 20px rgba(0, 0, 0, 0.05);
-  --shadow-float: 0 10px 40px rgba(0, 0, 0, 0.14), 0 2px 6px rgba(0, 0, 0, 0.06);
-  --hero-a: #0a84ff;
-  --hero-b: #5e5ce6;
+  --bg: #f7f1ea;
+  --bg-elev: #fffcf8;
+  --bg-elev2: #f1e8de;
+  --fill: rgba(150, 105, 70, 0.12);
+  --fill2: rgba(150, 105, 70, 0.2);
+  --label: #2b1d14;
+  --label2: rgba(74, 52, 38, 0.64);
+  --label3: rgba(74, 52, 38, 0.32);
+  --sep: rgba(74, 52, 38, 0.16);
+  --tint: #bf5418;
+  --green: #5f8a34;
+  --red: #c0392b;
+  --orange: #e08a1e;
+  --glass: rgba(250, 243, 235, 0.72);
+  --glass-strong: rgba(255, 250, 244, 0.84);
+  --glass-border: rgba(90, 55, 30, 0.12);
+  --seg-on: #fffcf8;
+  --shadow: 0 1px 2px rgba(90, 50, 20, 0.05), 0 6px 20px rgba(90, 50, 20, 0.06);
+  --shadow-float: 0 10px 40px rgba(90, 45, 15, 0.16), 0 2px 6px rgba(90, 45, 15, 0.07);
+  --hero-a: #ec8a2c;
+  --hero-m: #c9451f;
+  --hero-b: #8e2b3a;
+
+  /* Liquid Glass */
+  --lg-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.62), rgba(255, 248, 240, 0.34));
+  --lg-edge: rgba(255, 255, 255, 0.85);
+  --lg-edge-low: rgba(255, 255, 255, 0.3);
+  --lg-shadow: 0 10px 30px rgba(90, 45, 15, 0.16), 0 2px 6px rgba(90, 45, 15, 0.08);
+  --lg-lens: linear-gradient(180deg, rgba(255, 232, 208, 0.95), rgba(236, 190, 150, 0.5));
+  --lg-tab: #6f5646;
 
   --radius: 12px;
   --radius-lg: 22px;
@@ -40,49 +50,61 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #000000;
-    --bg-elev: #1c1c1e;
-    --bg-elev2: #2c2c2e;
-    --fill: rgba(120, 120, 128, 0.24);
-    --fill2: rgba(120, 120, 128, 0.36);
-    --label: #ffffff;
-    --label2: rgba(235, 235, 245, 0.6);
-    --label3: rgba(235, 235, 245, 0.3);
-    --sep: rgba(84, 84, 88, 0.6);
-    --tint: #0a84ff;
-    --green: #30d158;
-    --red: #ff453a;
-    --orange: #ff9f0a;
-    --glass: rgba(22, 22, 24, 0.72);
-    --glass-strong: rgba(30, 30, 32, 0.84);
-    --glass-border: rgba(255, 255, 255, 0.1);
-    --seg-on: #636366;
+    --bg: #14100c;
+    --bg-elev: #221a14;
+    --bg-elev2: #2e241c;
+    --fill: rgba(200, 160, 120, 0.14);
+    --fill2: rgba(200, 160, 120, 0.24);
+    --label: #f6ede4;
+    --label2: rgba(246, 237, 228, 0.6);
+    --label3: rgba(246, 237, 228, 0.3);
+    --sep: rgba(246, 237, 228, 0.12);
+    --tint: #f08a3c;
+    --green: #8fbf5a;
+    --red: #ff6b55;
+    --orange: #f5a742;
+    --glass: rgba(34, 26, 20, 0.72);
+    --glass-strong: rgba(44, 34, 27, 0.86);
+    --glass-border: rgba(255, 230, 205, 0.1);
+    --seg-on: #5a4637;
     --shadow: none;
-    --shadow-float: 0 10px 40px rgba(0, 0, 0, 0.5);
+    --shadow-float: 0 10px 40px rgba(0, 0, 0, 0.55);
+    --lg-bg: linear-gradient(180deg, rgba(80, 60, 46, 0.5), rgba(34, 26, 20, 0.42));
+    --lg-edge: rgba(255, 235, 215, 0.28);
+    --lg-edge-low: rgba(255, 235, 215, 0.06);
+    --lg-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.3);
+    --lg-lens: linear-gradient(180deg, rgba(255, 235, 215, 0.2), rgba(255, 235, 215, 0.08));
+    --lg-tab: rgba(246, 237, 228, 0.75);
     color-scheme: dark;
   }
 }
 
 :root[data-theme="dark"] {
-  --bg: #000000;
-  --bg-elev: #1c1c1e;
-  --bg-elev2: #2c2c2e;
-  --fill: rgba(120, 120, 128, 0.24);
-  --fill2: rgba(120, 120, 128, 0.36);
-  --label: #ffffff;
-  --label2: rgba(235, 235, 245, 0.6);
-  --label3: rgba(235, 235, 245, 0.3);
-  --sep: rgba(84, 84, 88, 0.6);
-  --tint: #0a84ff;
-  --green: #30d158;
-  --red: #ff453a;
-  --orange: #ff9f0a;
-  --glass: rgba(22, 22, 24, 0.72);
-  --glass-strong: rgba(30, 30, 32, 0.84);
-  --glass-border: rgba(255, 255, 255, 0.1);
-  --seg-on: #636366;
+  --bg: #14100c;
+  --bg-elev: #221a14;
+  --bg-elev2: #2e241c;
+  --fill: rgba(200, 160, 120, 0.14);
+  --fill2: rgba(200, 160, 120, 0.24);
+  --label: #f6ede4;
+  --label2: rgba(246, 237, 228, 0.6);
+  --label3: rgba(246, 237, 228, 0.3);
+  --sep: rgba(246, 237, 228, 0.12);
+  --tint: #f08a3c;
+  --green: #8fbf5a;
+  --red: #ff6b55;
+  --orange: #f5a742;
+  --glass: rgba(34, 26, 20, 0.72);
+  --glass-strong: rgba(44, 34, 27, 0.86);
+  --glass-border: rgba(255, 230, 205, 0.1);
+  --seg-on: #5a4637;
   --shadow: none;
-  --shadow-float: 0 10px 40px rgba(0, 0, 0, 0.5);
+  --shadow-float: 0 10px 40px rgba(0, 0, 0, 0.55);
+  --lg-bg: linear-gradient(180deg, rgba(80, 60, 46, 0.5), rgba(34, 26, 20, 0.42));
+  --lg-edge: rgba(255, 235, 215, 0.28);
+  --lg-edge-low: rgba(255, 235, 215, 0.06);
+  --lg-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.3);
+  --lg-lens: linear-gradient(180deg, rgba(255, 235, 215, 0.2), rgba(255, 235, 215, 0.08));
+  --lg-tab: rgba(246, 237, 228, 0.75);
   color-scheme: dark;
 }
 
@@ -155,7 +177,7 @@ p { margin: 0; }
   padding: 0 20px;
   border-radius: 14px;
   background: var(--tint);
-  color: #fff;
+  color: var(--on-tint, #fff);
   font-size: 17px;
   font-weight: 600;
   cursor: pointer;
@@ -362,78 +384,130 @@ p { margin: 0; }
 .rk-actions { display: flex; gap: 10px; justify-content: center; margin-top: 12px; }
 
 /* ------------------------------------------------------------ Guscio e barra delle sezioni */
-.view { padding-bottom: calc(var(--tabbar-h) + var(--safe-bottom) + 28px); }
+/* Barra flottante in stile Liquid Glass (iOS 26 / Apple Music):
+   una pillola di vetro con le sezioni e un cerchio separato per «Altro». */
+:root { --tabbar-h: 62px; --tabbar-gap: max(10px, calc(var(--safe-bottom) - 12px)); }
+
+.view { padding-bottom: calc(var(--tabbar-h) + var(--tabbar-gap) + 30px); }
 
 .tabbar {
   position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  left: calc(10px + var(--safe-left));
+  right: calc(10px + var(--safe-right));
+  bottom: var(--tabbar-gap);
   z-index: 50;
-  padding: 0 var(--safe-right) var(--safe-bottom) var(--safe-left);
-  background: var(--glass);
-  -webkit-backdrop-filter: saturate(180%) blur(20px);
-  backdrop-filter: saturate(180%) blur(20px);
-  box-shadow: inset 0 0.5px 0 var(--glass-border);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
 }
-.tabbar-inner { display: flex; justify-content: center; max-width: 1000px; margin: 0 auto; }
+.tabbar > * { pointer-events: auto; }
+
+/* Vetro: fondo traslucido, sfocatura forte, bordo luminoso in alto e riflesso. */
+.lg {
+  position: relative;
+  isolation: isolate;
+  background: var(--lg-bg);
+  -webkit-backdrop-filter: blur(14px) saturate(200%) brightness(1.06);
+  backdrop-filter: blur(14px) saturate(200%) brightness(1.06);
+  box-shadow:
+    inset 0 1px 0.5px var(--lg-edge),
+    inset 0 -1px 0.5px var(--lg-edge-low),
+    inset 0 0 0 0.5px var(--lg-edge-low),
+    var(--lg-shadow);
+}
+.lg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    radial-gradient(120% 70% at 30% -10%, rgba(255, 255, 255, 0.35), transparent 55%),
+    radial-gradient(80% 60% at 90% 120%, rgba(255, 210, 160, 0.12), transparent 60%);
+  mix-blend-mode: soft-light;
+}
+
+.tab-pill {
+  flex: 1;
+  max-width: 560px;
+  height: var(--tabbar-h);
+  border-radius: 999px;
+  display: flex;
+  align-items: stretch;
+  padding: 4px 3px;
+}
+
 .tab {
+  position: relative;
+  z-index: 1;
   flex: 1;
   min-width: 0;
-  max-width: 130px;
-  height: var(--tabbar-h);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
-  color: #8e8e93;
+  gap: 1px;
+  border-radius: 999px;
+  color: var(--lg-tab);
   font-size: 10px;
   font-weight: 500;
-  letter-spacing: 0.01em;
-  transition: color 0.2s ease;
+  transition: color 0.25s ease;
 }
-.tab .icon { width: 25px; height: 25px; stroke-width: 1.7; transition: transform 0.25s var(--ease); }
-.tab .icon-dots { stroke-width: 3.2; }
-.tab span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 1px; letter-spacing: -0.015em; }
+.tab.active span { font-weight: 600; }
+.tab .icon { width: 24px; height: 24px; stroke-width: 1.8; transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.tab .icon-dots { stroke-width: 3.4; }
+.tab span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; letter-spacing: -0.035em; }
+.tab-pill .tab { padding: 0 1px; }
 .tab.active { color: var(--tint); }
-.tab:active .icon { transform: scale(0.88); }
+.tab:active .icon { transform: scale(0.84); }
 
-/* Schermi larghi in basso: un po' più di spazio. */
-.shell[data-wide="true"][data-tabpos="bottom"] .tab { font-size: 11px; }
-
-/* Schermi larghi in alto: barra flottante a pillola, come su iPadOS. */
-.shell[data-tabpos="top"] { --nav-top: calc(var(--safe-top) + 64px); }
-.shell[data-tabpos="top"] .view { padding-bottom: calc(var(--safe-bottom) + 28px); }
-.shell[data-tabpos="top"] .tabbar {
-  top: calc(var(--safe-top) + 10px);
-  bottom: auto;
-  left: 50%;
-  right: auto;
-  transform: translateX(-50%);
-  padding: 4px;
+/* La "lente": una bolla di vetro più chiara che scivola sotto la sezione attiva. */
+.tab-lens {
+  position: absolute;
+  z-index: 0;
+  top: 4px;
+  bottom: 4px;
+  left: 0;
+  width: 0;
   border-radius: 999px;
-  background: var(--glass-strong);
-  box-shadow: var(--shadow-float), inset 0 0 0 0.5px var(--glass-border);
-  max-width: calc(100vw - 32px);
+  background: var(--lg-lens);
+  box-shadow:
+    inset 0 1px 0.5px var(--lg-edge),
+    inset 0 -0.5px 0.5px var(--lg-edge-low),
+    0 2px 8px rgba(90, 45, 15, 0.1);
+  transition: opacity 0.2s ease;
 }
-.shell[data-tabpos="top"] .tabbar-inner { gap: 2px; }
-.shell[data-tabpos="top"] .tab {
+.tabbar.lens-ready .tab-lens {
+  transition:
+    transform 0.5s cubic-bezier(0.34, 1.32, 0.5, 1),
+    width 0.5s cubic-bezier(0.34, 1.32, 0.5, 1),
+    opacity 0.2s ease;
+}
+.tab-lens.hidden { opacity: 0; }
+
+.tab-more {
   flex: none;
-  max-width: none;
-  height: 40px;
-  flex-direction: row;
-  gap: 6px;
-  padding: 0 14px;
-  border-radius: 999px;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--label2);
+  width: var(--tabbar-h);
+  height: var(--tabbar-h);
+  border-radius: 50%;
+  justify-content: center;
 }
-.shell[data-tabpos="top"] .tab .icon { display: none; }
-.shell[data-tabpos="top"] .tab[data-tab="altro"] .icon { display: block; width: 22px; height: 22px; }
-.shell[data-tabpos="top"] .tab[data-tab="altro"] span { display: none; }
-.shell[data-tabpos="top"] .tab.active { background: var(--fill); color: var(--label); }
+.tab-more .icon { width: 26px; height: 26px; }
+.tab-more.active { color: var(--tint); background: var(--lg-lens), var(--lg-bg); }
+
+/* Schermi larghi: etichette un po' più grandi. */
+.shell[data-wide="true"] .tab { font-size: 11px; }
+
+/* Schermi larghi in alto: pillola orizzontale con solo i nomi, come su iPadOS. */
+.shell[data-tabpos="top"] { --nav-top: calc(var(--safe-top) + 70px); }
+.shell[data-tabpos="top"] .view { padding-bottom: calc(var(--safe-bottom) + 28px); }
+.shell[data-tabpos="top"] .tabbar { top: calc(var(--safe-top) + 10px); bottom: auto; }
+.shell[data-tabpos="top"] .tab-pill { flex: none; max-width: calc(100vw - 100px); height: 50px; }
+.shell[data-tabpos="top"] .tab { flex: none; flex-direction: row; padding: 0 15px; font-size: 14px; }
+.shell[data-tabpos="top"] .tab-pill .icon { display: none; }
+.shell[data-tabpos="top"] .tab-more { width: 50px; height: 50px; }
 
 /* ------------------------------------------------------------ Pagine */
 .page { animation: page-in 0.35s var(--ease) both; }
@@ -627,8 +701,8 @@ p { margin: 0; }
 .hero-card {
   color: #fff;
   background:
-    radial-gradient(120% 140% at 100% 0%, rgba(255, 255, 255, 0.22), transparent 55%),
-    linear-gradient(135deg, var(--hero-a), var(--hero-b));
+    radial-gradient(120% 140% at 100% 0%, rgba(255, 230, 190, 0.28), transparent 55%),
+    linear-gradient(135deg, var(--hero-a), var(--hero-m) 55%, var(--hero-b));
   box-shadow: 0 14px 34px color-mix(in srgb, var(--hero-b) 35%, transparent);
   padding: 22px 22px 20px;
 }
@@ -731,7 +805,51 @@ p { margin: 0; }
 .tile-icon { width: 40px; height: 40px; border-radius: 11px; display: grid; place-items: center; background: var(--c); color: #fff; }
 .tile-icon .icon { width: 24px; height: 24px; }
 
-.result-list { margin: 0; padding-left: 20px; display: grid; gap: 6px; text-align: left; color: var(--label); }
+/* Palette */
+.palette-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 0 16px 28px; }
+.palette-card {
+  appearance: none;
+  border: 0;
+  background: var(--bg-elev);
+  border-radius: 20px;
+  padding: 8px 8px 12px;
+  display: grid;
+  gap: 7px;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+  transition: transform 0.2s var(--ease), box-shadow 0.25s ease;
+}
+.palette-card:active { transform: scale(0.97); }
+.palette-card.selected { box-shadow: 0 0 0 2.5px var(--tint), var(--shadow); }
+.pal-hero { position: relative; display: block; height: 70px; border-radius: 14px; }
+.pal-modes { position: absolute; right: 8px; bottom: 8px; display: flex; gap: 4px; }
+.pal-modes i { width: 16px; height: 16px; border-radius: 50%; border: 2px solid; box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.85); }
+.pal-check {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92);
+  color: #111;
+  display: grid;
+  place-items: center;
+  transform: scale(0);
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.pal-check .icon { width: 15px; height: 15px; stroke-width: 3; }
+.palette-card.selected .pal-check { transform: scale(1); }
+.pal-dots { display: flex; gap: 4px; padding: 0 4px; }
+.pal-dots i { width: 14px; height: 14px; border-radius: 50%; }
+.pal-name { font-size: 15px; font-weight: 600; padding: 0 4px; color: var(--label); }
+.pal-desc { font-size: 12px; color: var(--label2); line-height: 1.3; padding: 0 4px; margin-top: -4px; }
+@media (min-width: 768px) {
+  .palette-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); max-width: 720px; margin-left: auto; margin-right: auto; }
+}
+
+.result-list {margin: 0; padding-left: 20px; display: grid; gap: 6px; text-align: left; color: var(--label); }
 
 /* ------------------------------------------------------------ Fogli modali */
 .sheet-layer { position: fixed; inset: 0; z-index: 200; }

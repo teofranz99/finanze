@@ -16,7 +16,7 @@ export function altroView(el) {
         rows: hidden.map((s) => navRow({ href: `#/${s.id}`, icon: s.icon, color: s.color, label: s.title })),
       }) : ''}
       ${group({
-        rows: navRow({ href: '#/impostazioni', icon: 'sliders', color: '#8E8E93', label: 'Impostazioni' }),
+        rows: navRow({ href: '#/impostazioni', icon: 'sliders', color: 'var(--s10)', label: 'Impostazioni' }),
         footer: 'Puoi scegliere quali sezioni tenere nella barra da Impostazioni › Barra delle sezioni.',
       })}`,
   }));

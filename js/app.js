@@ -54,25 +54,44 @@ function renderTabbar() {
   shell.dataset.tabpos = wide ? s.widePosition : 'bottom';
   shell.dataset.wide = wide ? 'true' : 'false';
   const ids = visibleTabIds(wide);
+  // Pillola di vetro con le sezioni + cerchio separato per «Altro» (come la ricerca in Apple Music).
   setHtml(tabbarEl, html`
-    <div class="tabbar-inner">
+    <div class="tab-pill lg">
+      <span class="tab-lens" aria-hidden="true"></span>
       ${ids.map((id) => {
         const sec = sectionById(id);
         return html`<a class="tab" href="#/${id}" data-tab="${id}">${icon(sec.icon)}<span>${sec.short || sec.title}</span></a>`;
       })}
-      <a class="tab" href="#/altro" data-tab="altro">${icon('ellipsis', 'icon-dots')}<span>Altro</span></a>
-    </div>`);
+    </div>
+    <a class="tab tab-more lg" href="#/altro" data-tab="altro" aria-label="Altro">${icon('ellipsis', 'icon-dots')}</a>`);
+  tabbarEl.classList.remove('lens-ready');
   markActive(parse().section);
+  // Dalla seconda volta in poi la lente scivola con un rimbalzo.
+  requestAnimationFrame(() => requestAnimationFrame(() => tabbarEl.classList.add('lens-ready')));
+}
+
+function placeLens(activeTab) {
+  const lens = tabbarEl.querySelector('.tab-lens');
+  if (!lens) return;
+  if (!activeTab || activeTab.classList.contains('tab-more')) {
+    lens.classList.add('hidden');
+    return;
+  }
+  lens.classList.remove('hidden');
+  lens.style.width = `${activeTab.offsetWidth}px`;
+  lens.style.transform = `translateX(${activeTab.offsetLeft}px)`;
 }
 
 function markActive(section) {
   const vis = visibleTabIds();
   const active = vis.includes(section) ? section : 'altro';
+  let activeTab = null;
   for (const a of tabbarEl.querySelectorAll('.tab')) {
     const on = a.dataset.tab === active;
     a.classList.toggle('active', on);
-    if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+    if (on) { a.setAttribute('aria-current', 'page'); activeTab = a; } else a.removeAttribute('aria-current');
   }
+  placeLens(activeTab);
 }
 
 export function mountApp(root) {
@@ -98,5 +117,6 @@ export function mountApp(root) {
   route();
   addEventListener('hashchange', route);
   wideMQ.addEventListener('change', () => { renderTabbar(); route(); });
+  addEventListener('resize', () => markActive(parse().section));
   S.subscribe((col) => { if (col === 'settings' || col === '*') renderTabbar(); });
 }

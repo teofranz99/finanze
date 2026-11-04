@@ -4,7 +4,7 @@ import * as DB from './db.js';
 import * as V from './vault.js';
 import * as S from './store.js';
 import { html, setHtml } from './util.js';
-import { applyTheme } from './theme.js';
+import { applyAppearance } from './theme.js';
 import { showLock } from './views/lock.js';
 import { showSetup } from './views/setup.js';
 import { mountApp } from './app.js';
@@ -30,12 +30,21 @@ async function onUnlocked() {
 
 function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('sw.js').catch((e) => console.warn('Service worker non registrato', e));
+  // C'era già una versione: quando arriva quella nuova, se l'app è ancora bloccata
+  // ricarica subito; altrimenti la nuova versione partirà alla prossima apertura.
+  const hadController = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (hadController && !V.isUnlocked()) location.reload();
+  });
+  navigator.serviceWorker.register('sw.js')
+    .then((reg) => reg.update())
+    .catch((e) => console.warn('Service worker non registrato', e));
 }
 
 async function boot() {
   try {
-    applyTheme(await DB.metaGet('theme'));
+    const [theme, palette] = await Promise.all([DB.metaGet('theme'), DB.metaGet('palette')]);
+    applyAppearance({ theme, palette });
     await V.loadHeader();
     if (V.hasVault()) await showLock(root, onUnlocked);
     else showSetup(root, onUnlocked);

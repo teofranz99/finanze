@@ -38,7 +38,7 @@ export function showSetup(root, onDone) {
       </div>`,
 
     password: () => html`
-      <div class="setup-icon" style="--c:#007AFF">${icon('key')}</div>
+      <div class="setup-icon" style="--c:var(--s1)">${icon('key')}</div>
       <h1>Crea la password principale</h1>
       <p class="lead">Protegge tutti i tuoi dati. Nessuno può recuperarla: per questo tra poco riceverai una chiave di recupero.</p>
       <form class="setup-form" novalidate>
@@ -51,7 +51,7 @@ export function showSetup(root, onDone) {
       </form>`,
 
     recovery: () => html`
-      <div class="setup-icon" style="--c:#FF9500">${icon('shield')}</div>
+      <div class="setup-icon" style="--c:var(--s4)">${icon('shield')}</div>
       <h1>La tua chiave di recupero</h1>
       <p class="lead">Se dimentichi la password è l'unico modo per riaprire i dati. Stampala o scrivila e conservala lontano dal telefono.</p>
       ${recoveryKeyBlock(recoveryText)}
@@ -59,7 +59,7 @@ export function showSetup(root, onDone) {
       <div class="setup-actions"><button type="button" class="btn" data-continue disabled>Continua</button></div>`,
 
     passkey: () => html`
-      <div class="setup-icon" style="--c:#34C759">${icon('faceid')}</div>
+      <div class="setup-icon" style="--c:var(--s2)">${icon('faceid')}</div>
       <h1>Attiva ${bio}</h1>
       <p class="lead">Sblocca l'app con un'occhiata. La password principale resta l'alternativa.</p>
       <div class="setup-actions">
@@ -74,7 +74,7 @@ export function showSetup(root, onDone) {
       <div class="setup-actions"><button type="button" class="btn" data-finish>Inizia</button></div>`,
 
     restore: () => html`
-      <div class="setup-icon" style="--c:#5AC8FA">${icon('cloud-down')}</div>
+      <div class="setup-icon" style="--c:var(--s5)">${icon('cloud-down')}</div>
       <h1>Ripristina da un backup</h1>
       ${backup
         ? html`
