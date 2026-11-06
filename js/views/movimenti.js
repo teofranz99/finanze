@@ -10,7 +10,7 @@ import * as M from '../data/model.js';
 import * as S from '../store.js';
 import {
   txIcon, amountClass, dayLabel, subtitle, pickCategory, pickArea, setCategory, setArea,
-  openTxDetail, openManualAdd, openImport,
+  openTxDetail, openManualAdd, openImport, gridPicker, categoryGroups, areaItems, NO_AREA,
 } from './tx-ui.js';
 
 const PERIODS = [
@@ -59,7 +59,7 @@ export function filtered() {
     if (filters.categoryId && !M.parts(t).some((p) => p.categoryId === filters.categoryId)) return false;
     if (filters.areaId && !M.parts(t).some((p) => (p.areaId || '') === (filters.areaId === '-' ? '' : filters.areaId))) return false;
     if (q) {
-      const hay = `${t.merchant} ${t.description || ''} ${t.note || ''} ${(t.tags || []).map((g) => `#${g}`).join(' ')} ${M.category(t.categoryId).name}`.toLowerCase();
+      const hay = `${t.merchant} ${t.alias || ''} ${t.description || ''} ${t.note || ''} ${(t.tags || []).map((g) => `#${g}`).join(' ')} ${M.category(t.categoryId).name}`.toLowerCase();
       if (!hay.includes(q)) return false;
     }
     return true;
@@ -166,7 +166,7 @@ export function movimentiView(el) {
           ${selectMode ? html`<span class="tx-check">${on ? icon('check') : ''}</span>` : ''}
           ${txIcon(t)}
           <span class="tx-text">
-            <b>${t.merchant}${t.pending ? html` <i class="dot-pending" title="Non ancora consolidato"></i>` : ''}</b>
+            <b>${M.displayName(t)}${t.pending ? html` <i class="dot-pending" title="Non ancora consolidato"></i>` : ''}</b>
             <span>${subtitle(t)}${t.tags?.length ? ` · ${t.tags.map((g) => `#${g}`).join(' ')}` : ''}</span>
           </span>
           <span class="tx-amount ${amountClass(t)}">${formatCents(t.cents, { sign: true })}</span>
@@ -175,6 +175,19 @@ export function movimentiView(el) {
   }
 
   async function chooseFilter(key) {
+    // Categoria e area: griglia di icone con il nome sotto.
+    if (key === 'category' || key === 'area') {
+      const all = { id: '', name: key === 'category' ? 'Tutte' : 'Tutte le aree', icon: 'sliders', color: 'var(--tint)' };
+      const groups = key === 'category'
+        ? [{ items: [all] }, ...categoryGroups()]
+        : [{ items: [all, ...areaItems(), { id: '-', ...NO_AREA, name: 'Senza area' }] }];
+      const v = await gridPicker({ title: key === 'category' ? 'Filtra per categoria' : 'Filtra per area', groups, current: key === 'category' ? filters.categoryId : filters.areaId });
+      if (v == null) return;
+      if (key === 'category') filters.categoryId = v; else filters.areaId = v;
+      limit = PAGE;
+      draw();
+      return;
+    }
     let options;
     let current;
     if (key === 'period') { options = PERIODS; current = filters.period; }

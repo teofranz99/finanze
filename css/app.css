@@ -973,7 +973,9 @@ p { margin: 0; }
 .txd-head { display: grid; justify-items: center; gap: 4px; text-align: center; padding: 6px 0 10px; }
 .txd-amount { font-size: 34px; font-weight: 700; font-variant-numeric: tabular-nums; margin-top: 6px; }
 .txd-orig { font-size: 14px; color: var(--label2); }
-.txd-merchant { font-size: 18px; font-weight: 600; }
+.txd-merchant { appearance: none; border: 0; background: none; color: var(--label); font: inherit; font-size: 18px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 10px; cursor: pointer; }
+.txd-merchant .icon { width: 16px; height: 16px; color: var(--tint); }
+.txd-merchant:active { background: var(--fill); }
 .txd-meta { font-size: 14px; color: var(--label2); }
 .badge { display: inline-block; margin-top: 6px; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; background: color-mix(in srgb, var(--orange) 18%, transparent); color: var(--orange); }
 .tx-detail .group-title { padding: 6px 16px 0; }

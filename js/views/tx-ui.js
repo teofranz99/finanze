@@ -55,75 +55,115 @@ const KIND_GROUPS = [
   ['altro', 'Altro'],
 ];
 
-export function pickCategory(currentId) {
-  const cats = M.categories();
-  const groupOf = (c) => (c.kind === 'spesa' ? 'spesa' : c.kind === 'entrata' ? 'entrata' : 'altro');
+// Griglia di icone con il nome sotto. groups: [{ label, items: [{ id, name, icon, color }] }].
+// Restituisce l'id scelto, oppure null se il foglio viene chiuso.
+export function gridPicker({ title, groups, current }) {
   const s = openSheet(html`
     <div class="dialog picker">
-      <h2>Categoria</h2>
-      ${KIND_GROUPS.map(([g, label]) => {
-        const list = cats.filter((c) => groupOf(c) === g);
-        if (!list.length) return '';
-        return html`<h3 class="picker-title">${label}</h3>
-          <div class="cat-grid">${list.map((c) => html`
-            <button type="button" class="cat-chip ${c.id === currentId ? 'on' : ''}" data-id="${c.id}">
-              <span class="tx-icon" style="background:${c.color}">${icon(c.icon)}</span>
-              <span>${c.name}</span>
-            </button>`)}</div>`;
-      })}
+      <h2>${title}</h2>
+      ${groups.filter((g) => g.items.length).map((g) => html`
+        ${g.label ? html`<h3 class="picker-title">${g.label}</h3>` : ''}
+        <div class="cat-grid">${g.items.map((it) => html`
+          <button type="button" class="cat-chip ${it.id === current ? 'on' : ''}" data-id="${it.id}">
+            <span class="tx-icon" style="background:${it.color}">${icon(it.icon)}</span>
+            <span>${it.name}</span>
+          </button>`)}</div>`)}
     </div>`);
   s.el.addEventListener('click', (e) => {
     const b = e.target.closest('[data-id]');
     if (b) s.close(b.dataset.id);
   });
   return s.closed;
+}
+
+// Categorie raggruppate per tipo (Uscite, Entrate, Altro), pronte per la griglia.
+export function categoryGroups() {
+  const cats = M.categories();
+  const groupOf = (c) => (c.kind === 'spesa' ? 'spesa' : c.kind === 'entrata' ? 'entrata' : 'altro');
+  return KIND_GROUPS.map(([g, label]) => ({ label, items: cats.filter((c) => groupOf(c) === g) }));
+}
+
+export const areaItems = () => M.areas().map((a) => ({ id: a.id, name: a.name, icon: a.icon, color: a.color }));
+export const NO_AREA = { name: 'Nessuna area', icon: 'close', color: 'var(--s10)' };
+
+export function pickCategory(currentId) {
+  return gridPicker({ title: 'Categoria', groups: categoryGroups(), current: currentId });
 }
 
 // Restituisce l'id dell'area, '' per "nessuna area", null se annullato.
 export function pickArea(currentId) {
-  const list = M.areas();
-  const s = openSheet(html`
-    <div class="dialog picker">
-      <h2>Area</h2>
-      <div class="list">
-        ${list.map((a) => html`
-          <button type="button" class="row" data-id="${a.id}">
-            <span class="row-icon" style="background:${a.color}">${icon(a.icon)}</span>
-            <span class="row-label">${a.name}</span>
-            ${a.id === currentId ? html`<span class="row-check">${icon('check')}</span>` : ''}
-          </button>`)}
-        <button type="button" class="row" data-id="">
-          <span class="row-icon" style="background:var(--s10)">${icon('close')}</span>
-          <span class="row-label">Nessuna area</span>
-          ${!currentId ? html`<span class="row-check">${icon('check')}</span>` : ''}
-        </button>
-      </div>
-    </div>`);
-  s.el.addEventListener('click', (e) => {
-    const b = e.target.closest('[data-id]');
-    if (b) s.close(b.dataset.id);
+  return gridPicker({
+    title: 'Area',
+    groups: [{ items: [...areaItems(), { id: '', ...NO_AREA }] }],
+    current: currentId || '',
   });
-  return s.closed;
 }
 
 // Cambia categoria a un movimento e propone di farne una regola per quell'esercente.
-export async function setCategory(t, categoryId, { askRule = true } = {}) {
+export async function setCategory(t, categoryId, { ask = true } = {}) {
   if (!categoryId || categoryId === t.categoryId) return;
   await S.put('tx', t.id, M.withCategory(t, categoryId));
   if (categoryId === 'contanti') await M.ensureCashAccount();
-  if (!askRule || !t.merchant || categoryId === 'nc' || t.splits?.length) return;
-  const n = M.similarCount(t, categoryId);
-  const cat = M.category(categoryId);
+  if (!ask || !t.merchant || categoryId === 'nc' || t.splits?.length) return;
+  const cur = M.tx(t.id);
+  // Se il movimento ha già un nome scelto (es. PayPal → Spotify), la regola porta anche quello.
+  const patch = { categoryId, ...(cur.alias && cur.manual?.alias ? { alias: cur.alias } : {}) };
+  await askRule(cur, patch);
+}
+
+// Chi riconoscere: «i movimenti di X» oppure, per gli intermediari, «i pagamenti PayPal di 11,99 €».
+function ruleSubject(t) {
+  const s = M.ruleScope(t);
+  return s.amountCents != null ? `I pagamenti ${t.merchant} di ${formatCents(s.amountCents)}` : `I movimenti di «${t.merchant}»`;
+}
+
+async function askRule(t, patch) {
+  const n = M.similarCount(t, patch);
+  const parts = [];
+  if (patch.alias) parts.push(`si chiameranno «${patch.alias}»`);
+  if (patch.categoryId) parts.push(`andranno in ${M.category(patch.categoryId).name}`);
   const yes = await confirmDialog({
-    title: 'Usare sempre questa categoria?',
-    message: `I movimenti di «${t.merchant}» andranno in ${cat.name}.${n ? ` Vale anche per ${n} ${n === 1 ? 'movimento già importato' : 'movimenti già importati'}.` : ''}`,
+    title: 'Riconoscerli in automatico?',
+    message: `${ruleSubject(t)} ${parts.join(' e ')}.${n ? ` Vale anche per ${n} ${n === 1 ? 'movimento già importato' : 'movimenti già importati'}.` : ''}`,
     confirmLabel: 'Sì, sempre',
     cancelLabel: 'Solo questo',
   });
   if (yes) {
-    const changed = await M.saveRuleForMerchant(t.merchant, categoryId);
+    const changed = await M.saveRule(t, patch);
     toast(changed ? `Regola creata · ${changed} movimenti aggiornati` : 'Regola creata');
   }
+}
+
+// Dare un nome a un movimento (es. PayPal → Spotify). Vuoto = torna il nome della banca.
+export async function renameTx(id) {
+  const t = M.tx(id);
+  const s = openSheet(html`
+    <form class="dialog" novalidate>
+      <h2>Nome del movimento</h2>
+      <p>Dalla banca: «${t.merchant}». Scrivi come vuoi vederlo, per esempio «Spotify».</p>
+      <label class="field"><input class="text" name="alias" value="${t.alias || ''}" placeholder="${t.merchant}" autocapitalize="words"></label>
+      <div class="dialog-actions">
+        <button type="submit" class="btn">Salva</button>
+        ${t.alias ? html`<button type="button" class="btn secondary" data-reset>Usa il nome della banca</button>` : ''}
+      </div>
+    </form>`);
+  const form = s.el.querySelector('form');
+  setTimeout(() => form.elements.alias.focus(), 350);
+  const reset = form.querySelector('[data-reset]');
+  if (reset) reset.onclick = () => s.close('');
+  form.onsubmit = (e) => { e.preventDefault(); s.close(form.elements.alias.value.trim()); };
+  const value = await s.closed;
+  if (value == null) return;
+  const cur = M.tx(id);
+  if (!value) {
+    await S.put('tx', id, M.autoClassify({ ...cur, alias: null, manual: { ...(cur.manual || {}), alias: false } }));
+    return;
+  }
+  if (value === cur.alias) return;
+  await S.put('tx', id, { ...cur, alias: value, manual: { ...(cur.manual || {}), alias: true } });
+  const next = M.tx(id);
+  const patch = { alias: value, ...(next.categoryId !== 'nc' ? { categoryId: next.categoryId } : {}) };
+  await askRule(next, patch);
 }
 
 export async function setArea(t, areaId) {
@@ -147,7 +187,8 @@ export function openTxDetail(id) {
         ${txIcon(t, true)}
         <div class="txd-amount ${amountClass(t)}">${formatCents(t.cents, { sign: true })}</div>
         ${t.origCurrency ? html`<div class="txd-orig">${(t.origCents / 100).toLocaleString('it-IT', { minimumFractionDigits: 2 })} ${t.origCurrency}</div>` : ''}
-        <div class="txd-merchant">${t.merchant}</div>
+        <button type="button" class="txd-merchant" data-act="rename">${M.displayName(t)} ${icon('pencil')}</button>
+        ${t.alias ? html`<div class="txd-meta">Dalla banca: ${t.merchant}</div>` : ''}
         <div class="txd-meta">${new Intl.DateTimeFormat('it-IT', { dateStyle: 'full' }).format(d)}${acc ? ` · ${acc.name}` : ''}</div>
         ${t.pending ? html`<span class="badge">Non ancora consolidato</span>` : ''}
       </div>
@@ -196,6 +237,7 @@ export function openTxDetail(id) {
   }
 
   function wire(t) {
+    root.querySelector('[data-act=rename]').onclick = () => renameTx(id);
     root.querySelector('[data-act=cat]').onclick = async () => {
       const c = await pickCategory(t.categoryId);
       if (c) await setCategory(M.tx(id), c);

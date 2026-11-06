@@ -370,14 +370,16 @@ export function rulesPage(el) {
         ${list.length ? group({
           title: 'Le tue regole',
           rows: list.map((r) => {
-            const c = M.category(r.categoryId);
+            const c = r.categoryId ? M.category(r.categoryId) : null;
+            const who = `${r.label || r.pattern}${r.amountCents != null ? ` · ${formatCents(r.amountCents)}` : ''}`;
+            const what = [r.alias ? `«${r.alias}»` : null, c ? c.name : null].filter(Boolean).join(', ');
             return html`<div class="row static">
-              ${rowIcon(c.icon, c.color)}
-              <span class="row-label">${r.label || r.pattern}<small>→ ${c.name}</small></span>
+              ${rowIcon(c ? c.icon : 'pencil', c ? c.color : 'var(--s10)')}
+              <span class="row-label">${who}<small>→ ${what}</small></span>
               <button type="button" class="icon-btn" data-del="${r.id}" aria-label="Elimina regola">${icon('trash')}</button>
             </div>`;
           }),
-          footer: 'Le regole nascono quando cambi la categoria di un movimento e scegli «Sì, sempre». Valgono prima di quelle predefinite.',
+          footer: 'Le regole nascono quando cambi la categoria o il nome di un movimento e scegli «Sì, sempre». Per PayPal, Satispay e simili valgono solo per lo stesso importo.',
         }) : html`<p class="page-intro">Non hai ancora regole. Quando cambi la categoria di un movimento, l'app ti chiede se applicarla sempre a quell'esercente.</p>`}
         ${group({ title: 'Regole predefinite', rows: html`<div class="row static prose">L'app riconosce già stipendio, rate del PAC, commissioni, prelievi, bonifici tra i tuoi conti e molte catene comuni (supermercati, carburante, Amazon, abbonamenti, utenze…).</div>` })}`,
     }));

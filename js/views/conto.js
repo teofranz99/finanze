@@ -79,7 +79,7 @@ export function contoView(el, rest) {
             ${list.length ? html`<div class="list flush">${list.slice(0, 8).map((t) => html`
               <button type="button" class="tx-mini" data-id="${t.id}">
                 ${txIcon(t)}
-                <span class="tx-text"><b>${t.merchant}</b><span>${t.date.split('-').reverse().join('/')} · ${subtitle(t)}</span></span>
+                <span class="tx-text"><b>${M.displayName(t)}</b><span>${t.date.split('-').reverse().join('/')} · ${subtitle(t)}</span></span>
                 <span class="tx-amount ${amountClass(t)}">${formatCents(t.cents, { sign: true })}</span>
               </button>`)}</div>` : html`<p class="muted">Nessun movimento.</p>`}
           </section>

@@ -152,12 +152,30 @@ function rx(word) {
 
 export const merchantKey = (m) => normalizeKey(m);
 
+// Nome da mostrare: quello scelto dall'utente (o da una regola), altrimenti quello della banca.
+export const displayName = (t) => t.alias || t.merchant;
+
+// Servizi che pagano per conto di altri: il nome dell'esercente vero non compare,
+// quindi le regole per questi si basano anche sull'importo.
+const INTERMEDIARIES = ['PAYPAL', 'SATISPAY', 'SUMUP', 'KLARNA', 'SCALAPAY', 'STRIPE'];
+export const isIntermediary = (merchant) => INTERMEDIARIES.some((w) => merchantKey(merchant).includes(w));
+
+function ruleMatches(r, t) {
+  if (!r.pattern || !merchantKey(t.merchant).includes(r.pattern)) return false;
+  return r.amountCents == null || Math.abs(t.cents) === r.amountCents;
+}
+
+// Prima le regole con l'importo (più precise), poi le altre; a parità, le più recenti.
+function sortedRules() {
+  return rules().sort((a, b) => ((b.amountCents != null) - (a.amountCents != null)) || (b.createdAt - a.createdAt));
+}
+export const ruleFor = (t) => sortedRules().find((r) => ruleMatches(r, t)) || null;
+
 // Restituisce l'id della categoria (e l'area, se la regola la fissa) per un movimento.
 export function classify(t) {
   const mk = merchantKey(t.merchant);
-  for (const r of rules()) {
-    if (r.pattern && mk.includes(r.pattern)) return { categoryId: r.categoryId, areaId: r.areaId ?? undefined, ruleId: r.id };
-  }
+  const rule = ruleFor(t);
+  if (rule && rule.categoryId) return { categoryId: rule.categoryId, areaId: rule.areaId ?? undefined, ruleId: rule.id };
   // Indicazione data dal lettore della banca (es. interessi Revolut, commissioni BPER).
   if (t.hint && S.get('categories', t.hint)) return { categoryId: t.hint };
   const causale = normalizeKey(t.causale);
@@ -175,6 +193,10 @@ export function classify(t) {
 // Applica la classificazione automatica, senza toccare le scelte fatte a mano.
 export function autoClassify(t) {
   const next = { ...t, manual: { ...(t.manual || {}) } };
+  if (!next.manual.alias) {
+    const r = ruleFor(next);
+    next.alias = r?.alias || null;
+  }
   if (!next.manual.category) {
     const c = classify(next);
     next.categoryId = c.categoryId;
@@ -195,24 +217,43 @@ export function withArea(t, areaId) {
   return { ...t, areaId, manual: { ...(t.manual || {}), area: true } };
 }
 
-// Crea (o aggiorna) la regola per un esercente e la applica ai movimenti non scelti a mano.
-export async function saveRuleForMerchant(merchant, categoryId) {
-  const pattern = merchantKey(merchant);
-  if (!pattern) return 0;
-  const existing = rules().find((r) => r.pattern === pattern);
-  const rule = { id: existing?.id || uid(), pattern, label: merchant, categoryId, areaId: null, createdAt: Date.now() };
+// Ambito di una regola nata da un movimento: per gli intermediari (PayPal…) anche l'importo.
+export function ruleScope(t) {
+  return { pattern: merchantKey(t.merchant), amountCents: isIntermediary(t.merchant) ? Math.abs(t.cents) : null };
+}
+
+// Crea (o aggiorna) la regola e la applica ai movimenti che corrispondono, senza toccare
+// le scelte fatte a mano. `patch` può contenere categoryId e/o alias.
+export async function saveRule(t, patch) {
+  const scope = ruleScope(t);
+  if (!scope.pattern) return 0;
+  const existing = rules().find((r) => r.pattern === scope.pattern && (r.amountCents ?? null) === scope.amountCents);
+  const rule = {
+    id: existing?.id || uid(),
+    ...scope,
+    label: t.merchant,
+    categoryId: existing?.categoryId || null,
+    alias: existing?.alias || null,
+    areaId: null,
+    ...patch,
+    createdAt: Date.now(),
+  };
   await S.put('rules', rule.id, rule);
-  const changed = txs()
-    .filter((t) => !t.manual?.category && merchantKey(t.merchant).includes(pattern) && t.categoryId !== categoryId)
-    .map((t) => autoClassify(t));
+  const changed = txs().filter((x) => ruleMatches(rule, x)).map((x) => autoClassify(x))
+    .filter((n) => { const o = tx(n.id); return o.categoryId !== n.categoryId || (o.alias || null) !== (n.alias || null) || o.areaId !== n.areaId; });
   await S.putMany('tx', changed);
   return changed.length;
 }
 
-export function similarCount(t, categoryId) {
-  const key = merchantKey(t.merchant);
-  if (!key) return 0;
-  return txs().filter((x) => x.id !== t.id && !x.manual?.category && merchantKey(x.merchant).includes(key) && x.categoryId !== categoryId).length;
+// Compatibilità: regola per categoria su un esercente.
+export const saveRuleForMerchant = (t, categoryId) => saveRule(t, { categoryId });
+
+// Quanti altri movimenti cambierebbero con questa regola.
+export function similarCount(t, patch) {
+  const rule = { ...ruleScope(t) };
+  return txs().filter((x) => x.id !== t.id && ruleMatches(rule, x) && (
+    (patch.categoryId && !x.manual?.category && x.categoryId !== patch.categoryId)
+    || (patch.alias && !x.manual?.alias && x.alias !== patch.alias))).length;
 }
 
 // Abbina i giroconti: stessa cifra con segno opposto su due conti diversi, a pochi giorni
@@ -237,9 +278,9 @@ export async function linkTransfers() {
 export async function reclassifyAll() {
   const changed = [];
   for (const t of txs()) {
-    if (t.manual?.category) continue;
+    if (t.manual?.category && t.manual?.alias) continue;
     const n = autoClassify(t);
-    if (n.categoryId !== t.categoryId || n.areaId !== t.areaId) changed.push(n);
+    if (n.categoryId !== t.categoryId || n.areaId !== t.areaId || (n.alias || null) !== (t.alias || null)) changed.push(n);
   }
   await S.putMany('tx', changed);
   return changed.length;
