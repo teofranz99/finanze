@@ -188,5 +188,10 @@ export function toast(message, { type = 'info', duration = 2600 } = {}) {
   void toastEl.offsetWidth;
   toastEl.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => toastEl.classList.remove('show'), duration);
+  toastTimer = setTimeout(() => {
+    toastEl.classList.remove('show');
+    // Tolto dalla pagina a fine animazione: niente sfocatura residua in alto.
+    const el = toastEl;
+    setTimeout(() => { if (el && !el.classList.contains('show')) { el.remove(); if (toastEl === el) toastEl = null; } }, 600);
+  }, duration);
 }

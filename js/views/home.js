@@ -17,15 +17,23 @@ function donut(slices) {
       <circle class="donut-track" cx="60" cy="60" r="48"></circle>
       <circle class="donut-skeleton" cx="60" cy="60" r="48" pathLength="100"></circle></svg>`;
   }
+  // Ogni conto ha almeno una fetta visibile, anche se piccolissimo (es. 1,25 €):
+  // le fette sotto la soglia vengono allargate un po' e le altre ristrette in proporzione.
+  const MIN = 1.6;
+  const raw = slices.map((x) => (x.cents / total) * 100);
+  const small = raw.filter((v) => v < MIN);
+  const bigSum = raw.filter((v) => v >= MIN).reduce((s, v) => s + v, 0);
+  const room = 100 - small.length * MIN;
+  const lens = raw.map((v) => (v < MIN ? MIN : (v / bigSum) * room));
+  // Spazio tra le fette: mostra lo sfondo della scheda (niente anello grigio sotto).
+  const gap = slices.length > 1 ? 0.7 : 0;
   let acc = 0;
-  const gap = slices.length > 1 ? 0.8 : 0;
   return html`<svg class="donut" viewBox="0 0 120 120" aria-hidden="true">
-    <circle class="donut-track" cx="60" cy="60" r="48"></circle>
     ${slices.map((x, i) => {
-      const len = (x.cents / total) * 100;
+      const len = Math.max(0.5, lens[i] - gap);
       const seg = html`<circle class="donut-slice" cx="60" cy="60" r="48" pathLength="100"
-        style="stroke:${x.color};stroke-dasharray:${Math.max(0, len - gap)} ${100 - Math.max(0, len - gap)};stroke-dashoffset:${-acc};animation-delay:${i * 0.08}s"></circle>`;
-      acc += len;
+        style="stroke:${x.color};stroke-dasharray:${len} ${100 - len};stroke-dashoffset:${-acc};animation-delay:${i * 0.08}s"></circle>`;
+      acc += lens[i];
       return seg;
     })}
   </svg>`;

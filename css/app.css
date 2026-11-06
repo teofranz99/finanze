@@ -1226,10 +1226,12 @@ button.next-card { appearance: none; border: 0; width: 100%; text-align: left; f
   text-align: center;
   transform: translate(-50%, -140%);
   opacity: 0;
-  transition: transform 0.45s var(--ease), opacity 0.3s ease;
+  /* Nascosto davvero quando non serve: su iPhone la sfocatura resterebbe visibile anche a opacità 0. */
+  visibility: hidden;
+  transition: transform 0.45s var(--ease), opacity 0.3s ease, visibility 0s linear 0.45s;
   pointer-events: none;
 }
-.toast.show { transform: translate(-50%, 0); opacity: 1; }
+.toast.show { transform: translate(-50%, 0); opacity: 1; visibility: visible; transition-delay: 0s; }
 .toast[data-type="error"] { color: var(--red); }
 
 /* Copertura quando l'app va in background (anteprima del multitasking). */
