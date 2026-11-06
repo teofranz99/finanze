@@ -9,6 +9,7 @@ import { formatCents } from '../money.js';
 import { PICKABLE_ICONS, PICKABLE_COLORS } from '../data/defaults.js';
 import * as M from '../data/model.js';
 import * as S from '../store.js';
+import { exportTemplate, readTemplateFile } from '../import/template.js';
 
 const BACK = { href: 'impostazioni', label: 'Impostazioni' };
 const ROLES = [['spendibile', 'Spendibile'], ['risparmio', 'Risparmio'], ['vincolato', 'Vincolato']];
@@ -43,13 +44,13 @@ export function accountsPage(el) {
         }) : html`<p class="page-intro">Nessun conto. I conti si creano da soli al primo import di un estratto conto.</p>`}`,
     }));
     off = enhancePage(el);
-    el.querySelectorAll('[data-id]').forEach((b) => { b.onclick = () => editAccount(M.account(b.dataset.id)); });
+    el.querySelectorAll('[data-id]').forEach((b) => { b.onclick = () => { location.hash = `#/conto/${b.dataset.id}`; }; });
   };
   const unsub = live(el, draw, ['accounts', 'tx']);
   return () => { off?.(); unsub(); };
 }
 
-function editAccount(a) {
+export function editAccount(a) {
   const s = openSheet(html`
     <form class="dialog" novalidate>
       <h2>${a.name}</h2>
@@ -273,6 +274,74 @@ function editArea(a) {
       s.close();
     };
   }
+}
+
+// ---------------------------------------------------------------- Modelli di import
+export function templatesPage(el) {
+  let off = null;
+  const draw = () => {
+    off?.();
+    const list = S.list('templates').sort((a, b) => a.name.localeCompare(b.name));
+    setHtml(el, page({
+      title: 'Modelli di import',
+      back: BACK,
+      large: false,
+      body: html`
+        <p class="page-intro">Quando importi un CSV di una banca nuova, l'abbinamento delle colonne diventa un modello. Si riusa da solo e si può passare ad altri (contiene solo i nomi delle colonne, nessun dato).</p>
+        ${group({
+          title: 'Riconosciuti senza modello',
+          rows: html`<div class="row static prose">Banca di Piacenza e BPER (PDF «Lista movimenti»), Revolut (CSV, in italiano e in inglese).</div>`,
+        })}
+        ${list.length ? group({
+          title: 'I tuoi modelli',
+          rows: list.map((t) => html`<div class="row static">
+            ${rowIcon('doc', 'var(--s5)')}
+            <span class="row-label">${t.name}<small>${t.signature.split('|').filter(Boolean).slice(0, 4).join(' · ')}</small></span>
+            <button type="button" class="icon-btn" data-share="${t.id}" aria-label="Condividi modello">${icon('upload')}</button>
+            <button type="button" class="icon-btn" data-del="${t.id}" aria-label="Elimina modello">${icon('trash')}</button>
+          </div>`),
+        }) : ''}
+        ${group({ rows: html`<button type="button" class="row tinted" data-import-tpl><span class="row-label">Importa un modello ricevuto</span></button>` })}
+        <input type="file" accept="application/json,.json" data-tpl-file hidden>`,
+    }));
+    off = enhancePage(el);
+    el.querySelectorAll('[data-del]').forEach((b) => {
+      b.onclick = async () => {
+        const ok = await confirmDialog({ title: 'Eliminare il modello?', message: 'La prossima volta che importi un file di questa banca ti chiederò di nuovo le colonne.', confirmLabel: 'Elimina', destructive: true });
+        if (ok) await S.remove('templates', b.dataset.del);
+      };
+    });
+    el.querySelectorAll('[data-share]').forEach((b) => {
+      b.onclick = async () => {
+        const file = exportTemplate(S.get('templates', b.dataset.share));
+        try {
+          if (navigator.canShare && navigator.canShare({ files: [file] })) await navigator.share({ files: [file] });
+          else {
+            const url = URL.createObjectURL(file);
+            const a = document.createElement('a');
+            a.href = url; a.download = file.name; document.body.appendChild(a); a.click(); a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 30000);
+          }
+        } catch (e) { if (e.name !== 'AbortError') toast(e.message, { type: 'error' }); }
+      };
+    });
+    const input = el.querySelector('[data-tpl-file]');
+    el.querySelector('[data-import-tpl]').onclick = () => input.click();
+    input.onchange = async () => {
+      const f = input.files[0];
+      input.value = '';
+      if (!f) return;
+      try {
+        const tpl = readTemplateFile(JSON.parse(await f.text()));
+        const existing = S.list('templates').find((t) => t.signature === tpl.signature);
+        const id = existing?.id || uid();
+        await S.put('templates', id, { ...tpl, id, accountId: existing?.accountId || null, createdAt: Date.now() });
+        toast(`Modello «${tpl.name}» aggiunto`);
+      } catch (e) { toast(e.message, { type: 'error' }); }
+    };
+  };
+  const unsub = live(el, draw, ['templates']);
+  return () => { off?.(); unsub(); };
 }
 
 // ---------------------------------------------------------------- Regole

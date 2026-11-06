@@ -74,7 +74,8 @@ export function homeView(el) {
               </div>
             </div>
             ${slices.length ? html`<ul class="legend">${slices.map((x) => html`
-              <li><i style="background:${x.color}"></i><span>${x.account.name}</span><b>${formatCents(x.cents)}</b><em>${Math.round((x.cents / w.total) * 100)}%</em></li>`)}</ul>`
+              <li><a href="#/conto/${x.account.id}"><i style="background:${x.color}"></i><span>${x.account.name}</span><b>${formatCents(x.cents)}</b><em>${Math.round((x.cents / w.total) * 100)}%</em></a></li>`)}</ul>
+              ${w.savings ? html`<p class="muted small center">Spendibile ${formatCents(w.spendable)} · Risparmi ${formatCents(w.savings)}</p>` : ''}`
               : html`<p class="muted center">I conti compariranno qui dopo il primo import.</p>`}
           </section>
 
@@ -84,6 +85,7 @@ export function homeView(el) {
               <div><span>Entrate</span><b class="positive">${formatCents(tot.income)}</b></div>
               <div><span>Uscite</span><b>${formatCents(tot.expense)}</b></div>
             </div>
+            ${tot.extraordinary ? html`<p class="extra-note">${icon('sparkles')}Spese straordinarie a parte: <b>${formatCents(tot.extraordinary)}</b></p>` : ''}
             ${topCats.length ? html`<ul class="cat-bars">${topCats.map((c) => {
               const cat = M.category(c.id);
               return html`<li>

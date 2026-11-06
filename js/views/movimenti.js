@@ -31,6 +31,12 @@ export function showCategoryThisMonth(categoryId) {
   location.hash = '#/movimenti';
 }
 
+// Apre i Movimenti di un solo conto, su tutto il periodo.
+export function showAccount(accountId) {
+  Object.assign(filters, { period: 'all', accountId, categoryId: '', areaId: '', q: '' });
+  location.hash = '#/movimenti';
+}
+
 function range(period) {
   const now = new Date();
   const p = (n) => String(n).padStart(2, '0');
@@ -126,6 +132,7 @@ export function movimentiView(el) {
           <div><span>Entrate</span><b class="positive">${formatCents(tot.income)}</b></div>
           <div><span>Uscite</span><b>${formatCents(tot.expense)}</b></div>
           <div><span>Differenza</span><b class="${tot.net >= 0 ? 'positive' : 'negative'}">${formatCents(tot.net, { sign: true })}</b></div>
+          ${tot.extraordinary ? html`<p class="extra-note">${icon('sparkles')}Spese straordinarie a parte: <b>${formatCents(tot.extraordinary)}</b></p>` : ''}
         </div>
 
         ${ncCount ? html`<button type="button" class="nc-banner" data-nc>${icon('question')}<span><b>${ncCount} da classificare</b> · scorri un movimento verso sinistra per scegliere la categoria</span></button>` : ''}

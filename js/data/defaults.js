@@ -29,6 +29,10 @@ export const DEFAULT_CATEGORIES = [
   { id: 'casa', name: 'Casa', icon: 'house', color: 'var(--s1)', kind: 'spesa', areaId: 'casa' },
   { id: 'salute', name: 'Salute', icon: 'pulse', color: 'var(--s8)', kind: 'spesa', areaId: 'salute' },
   { id: 'svago', name: 'Svago', icon: 'ticket', color: 'var(--s7)', kind: 'spesa', areaId: 'svago' },
+  { id: 'mutuo', name: 'Mutuo e finanziamenti', icon: 'bank', color: 'var(--s6)', kind: 'spesa', areaId: 'casa' },
+  { id: 'assicurazioni', name: 'Assicurazioni', icon: 'shield', color: 'var(--s5)', kind: 'spesa', areaId: 'casa' },
+  // Spese grandi e rare (acquisto casa, notaio...): contano nel totale dell'area, non nelle spese del mese.
+  { id: 'straordinarie', name: 'Spese straordinarie', icon: 'sparkles', color: 'var(--s8)', kind: 'straordinaria', areaId: 'casa' },
   { id: 'banca', name: 'Banca e tasse', icon: 'bank', color: 'var(--s10)', kind: 'spesa', areaId: null },
   // Il prelievo sposta soldi dal conto al conto «Contanti»: non è una spesa.
   { id: 'contanti', name: 'Prelievi contanti', icon: 'cash', color: 'var(--s2)', kind: 'giroconto', areaId: null },
@@ -38,6 +42,8 @@ export const DEFAULT_CATEGORIES = [
   { id: 'interessi', name: 'Interessi', icon: 'percent', color: 'var(--s4)', kind: 'entrata', areaId: null },
   { id: 'altre-entrate', name: 'Altre entrate', icon: 'plus', color: 'var(--s9)', kind: 'entrata', areaId: null },
   { id: 'giroconto', name: 'Giroconto', icon: 'swap', color: 'var(--s10)', kind: 'giroconto', areaId: null },
+  // Un mutuo o un prestito ricevuto non è un'entrata: sono soldi da restituire.
+  { id: 'finanziamenti', name: 'Mutuo o prestito ricevuto', icon: 'bank', color: 'var(--s10)', kind: 'giroconto', areaId: null },
   { id: 'nc', name: 'Da classificare', icon: 'question', color: 'var(--s10)', kind: 'auto', areaId: null },
 ];
 
@@ -48,6 +54,8 @@ export const PICKABLE_COLORS = ['var(--s1)', 'var(--s2)', 'var(--s3)', 'var(--s4
 // Regole sulla causale del movimento (scritta dalla banca), valutate per prime.
 export const CAUSALE_RULES = [
   { cat: 'stipendio', words: ['EMOLUMENTI', 'STIPENDIO', 'STIPENDI', 'ACCREDITO STIPENDIO'] },
+  { cat: 'finanziamenti', words: ['EROGAZIONE FINANZIAMENTO', 'EROGAZIONE MUTUO', 'EROGAZIONE PRESTITO'] },
+  { cat: 'assicurazioni', words: ['PREMI ASSICURATIVI', 'PREMIO ASSICURATIVO'] },
   { cat: 'investimenti', words: ['SOTTOSC. TIT/FONDI', 'SOTTOSCRIZIONE FONDI', 'ACQUISTO TITOLI'] },
   { cat: 'interessi', words: ['INTERESSI', 'INTERESSI CREDITORI'] },
   { cat: 'banca', words: ['COMMISSIONI', 'IMPOSTE E TASSE', 'RECUPERO BOLLI', 'IMPOSTA DI BOLLO', 'CANONE CONTO CORRENTE', 'CANONE', 'ADDEBITI HOME BANKING', 'SPESE', 'COMPETENZE DI CHIUSURA'] },
@@ -60,6 +68,9 @@ export const TEXT_RULES = [
   { cat: 'stipendio', words: ['SALARY', 'ACCREDITO COMPETENZE', 'ACCREDITO STIPENDIO'] },
   { cat: 'investimenti', words: ['RATA PAC', 'SOTTOSCRIZIONE RATA'] },
   { cat: 'contanti', words: ['OPERAZIONE ATM', 'PRELIEVO BANCOMAT'] },
+  { cat: 'straordinarie', words: ['ACQUISTO IMMOBILE', 'SALDO ACQUISTO', 'ESTINZIONE TOTALE', 'NOTAIO', 'NOTAI', 'ROGITO', 'PERIZIA', 'CAPARRA', 'AGENZIA IMMOBILIARE', 'ONERI FINANZIAMENTO', 'IMPOSTA SOSTITUTIVA'] },
+  { cat: 'mutuo', words: ['RATA MUTUO', 'RIMBORSO RATA', 'RATA FINANZIAMENTO', 'RATA PRESTITO', 'RATA FIN'] },
+  { cat: 'assicurazioni', words: ['POLIZZA', 'ASSICURAZIONE', 'ASSICURAZIONI', 'UNIPOL', 'UNIPOLSAI', 'GENERALI', 'ALLIANZ', 'AXA', 'PRIMA ASSICURAZIONI', 'VERTI', 'ZURICH', 'REALE MUTUA', 'GROUPAMA', 'LINEAR', 'GENIALLOYD'] },
   { cat: 'spesa', words: ['FAMILA', 'CONAD', 'COOP', 'ESSELUNGA', 'LIDL', 'EUROSPIN', 'CARREFOUR', 'PAM', 'PENNY', 'ALDI', 'IPERCOOP', 'BENNET', 'TIGROS', 'DESPAR', 'SPAR', 'INTERSPAR', 'CRAI', 'TODIS', 'NATURASI', 'SIGMA', 'IPER', 'SUPERMERCATO', 'SUPERMERCATI', 'ALIMENTARI', 'MACELLERIA', 'PANETTERIA', 'PANIFICIO', 'FRUTTA', 'MARKET', 'CONVENIENZA MARKET'] },
   { cat: 'ristoranti', words: ['RISTORANTE', 'PIZZERIA', 'TRATTORIA', 'OSTERIA', 'SUSHI', 'MCDONALDS', 'MCDONALD', 'BURGER KING', 'KFC', 'ROADHOUSE', 'AUTOGRILL', 'POKE', 'KEBAB', 'GLOVO', 'DELIVEROO', 'JUST EAT', 'JUSTEAT', 'MYCHEF', 'OLD WILD WEST', 'PIADINERIA', 'BRACERIA', 'TAVOLA CALDA'] },
   { cat: 'bar', words: ['BAR', 'CAFFE', 'CAFFÈ', 'CAFE', 'PASTICCERIA', 'GELATERIA', 'STARBUCKS'] },

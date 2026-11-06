@@ -7,7 +7,8 @@ import { openSheet, confirmDialog, toast } from '../ui/sheet.js';
 import { formatCents, isoToday } from '../money.js';
 import * as M from '../data/model.js';
 import * as S from '../store.js';
-import { readStatement, plan as planImport, commit as commitImport } from '../import/importer.js';
+import { readStatement, plan as planImport, commit as commitImport, saveTemplateAndApply } from '../import/importer.js';
+import { applyTemplate, validateMapping } from '../import/template.js';
 
 // ---------------------------------------------------------------- Formattazione
 export function txIcon(t, big = false) {
@@ -39,6 +40,9 @@ export function dayLabel(iso) {
 
 export function subtitle(t) {
   if (t.splits?.length) return `Diviso in ${t.splits.length} parti`;
+  if (t.transferAccountId && M.account(t.transferAccountId)) {
+    return `Giroconto ${t.cents < 0 ? 'verso' : 'da'} ${M.account(t.transferAccountId).name}`;
+  }
   const c = M.category(t.categoryId);
   const a = M.area(t.areaId);
   return [c?.name, a?.name].filter(Boolean).join(' · ');
@@ -388,15 +392,16 @@ export function openManualAdd() {
 export function openImport() {
   const input = document.createElement('input');
   input.type = 'file';
-  input.accept = 'application/pdf,.pdf';
+  input.accept = 'application/pdf,.pdf,text/csv,.csv,text/plain,.txt';
   input.addEventListener('change', async () => {
     const file = input.files[0];
     if (!file) return;
     const s = openSheet(html`<div class="dialog import-sheet"><div class="import-loading"><span class="spinner"></span><p>Lettura di «${file.name}»…</p></div></div>`, { className: 'tall' });
     const root = s.el.querySelector('.import-sheet');
     try {
-      const st = await readStatement(file);
-      showPlan(s, root, planImport(st));
+      const r = await readStatement(file);
+      if (r.mapping) showMapping(s, root, r.mapping);
+      else showPlan(s, root, planImport(r.st));
     } catch (e) {
       console.error(e);
       root.innerHTML = String(html`
@@ -408,11 +413,104 @@ export function openImport() {
   input.click();
 }
 
+// Procedura guidata per un CSV mai visto: abbinamento delle colonne, salvato come modello.
+const DATE_FORMATS = [['dmy', 'gg/mm/aaaa'], ['ymd', 'aaaa-mm-gg'], ['dmy2', 'gg/mm/aa'], ['mdy', 'mm/gg/aaaa']];
+const DECIMALS = [[',', '1.234,56'], ['.', '1,234.56']];
+
+function showMapping(s, root, m) {
+  const st = {
+    mapping: { ...m.guess },
+    mode: m.guess.amount == null && (m.guess.income != null || m.guess.expense != null) ? 'split' : 'single',
+    dateFormat: m.formats.dateFormat,
+    decimal: m.formats.decimal,
+    name: '',
+    accountId: '',
+  };
+  const fields = () => [
+    ['date', 'Data'],
+    ['description', 'Descrizione'],
+    ...(st.mode === 'single' ? [['amount', 'Importo']] : [['income', 'Entrate'], ['expense', 'Uscite']]),
+    ['causale', 'Tipo operazione (facoltativo)'],
+    ['balance', 'Saldo (facoltativo)'],
+    ['valueDate', 'Data valuta (facoltativa)'],
+  ];
+  const colSelect = (field) => html`<select data-map="${field}">
+      <option value="">—</option>
+      ${m.header.map((h, i) => html`<option value="${i}" ${st.mapping[field] === i ? 'selected' : ''}>${h || `Colonna ${i + 1}`}</option>`)}
+    </select>`;
+
+  function draw() {
+    const map = { ...st.mapping };
+    if (st.mode === 'single') { delete map.income; delete map.expense; } else delete map.amount;
+    const err = validateMapping(map);
+    let preview = null;
+    if (!err) {
+      try { preview = applyTemplate(m.rows, { id: 'tmp', name: st.name || 'Banca', headerRow: m.headerRow, mapping: map, dateFormat: st.dateFormat, decimal: st.decimal }); } catch { preview = null; }
+    }
+    root.innerHTML = String(html`
+      <h2>Formato nuovo</h2>
+      <p>È la prima volta che importo un file così. Ho proposto io le colonne: controllale. Dalla prossima volta lo riconoscerò da solo.</p>
+      <div class="csv-preview"><table>
+        <tr>${m.header.map((h) => html`<th>${h}</th>`)}</tr>
+        ${m.body.slice(0, 3).map((r) => html`<tr>${m.header.map((_, i) => html`<td>${(r[i] || '').slice(0, 40)}</td>`)}</tr>`)}
+      </table></div>
+      <label class="field"><input class="text" name="bank" value="${st.name}" placeholder="Nome della banca (es. Intesa Sanpaolo)"></label>
+      <div class="segmented wide" data-seg="mode">
+        <button type="button" class="${st.mode === 'single' ? 'on' : ''}" data-value="single">Importo con segno</button>
+        <button type="button" class="${st.mode === 'split' ? 'on' : ''}" data-value="split">Entrate e uscite</button>
+      </div>
+      <div class="field-group map-fields">
+        ${fields().map(([f, label]) => html`<label class="field field-row"><span>${label}</span>${colSelect(f)}</label>`)}
+        <label class="field field-row"><span>Formato data</span><select data-fmt="date">${DATE_FORMATS.map(([v, l]) => html`<option value="${v}" ${st.dateFormat === v ? 'selected' : ''}>${l}</option>`)}</select></label>
+        <label class="field field-row"><span>Importi</span><select data-fmt="decimal">${DECIMALS.map(([v, l]) => html`<option value="${v}" ${st.decimal === v ? 'selected' : ''}>${l}</option>`)}</select></label>
+        <label class="field field-row"><span>Conto</span><select data-acc><option value="">Nuovo conto</option>${M.accounts().filter((a) => a.type !== 'contanti').map((a) => html`<option value="${a.id}" ${st.accountId === a.id ? 'selected' : ''}>${a.name}</option>`)}</select></label>
+      </div>
+      ${err ? html`<p class="form-error">${err}</p>` : preview && preview.rows.length ? html`
+        <h3 class="group-title">Così verranno letti (${preview.rows.length} movimenti)</h3>
+        <div class="list">${preview.rows.slice(0, 3).map((r) => html`<div class="row static"><span class="row-label">${r.description || '—'}<small>${r.date}</small></span><span class="row-detail">${formatCents(r.cents, { sign: true })}</span></div>`)}</div>`
+        : html`<p class="form-error">Con queste colonne non trovo movimenti: controlla data, importi e formati.</p>`}
+      <div class="dialog-actions">
+        <button type="button" class="btn" data-go ${err || !preview?.rows.length ? 'disabled' : ''}>Continua</button>
+        <button type="button" class="btn secondary" data-cancel>Annulla</button>
+      </div>`);
+
+    root.querySelector('[name=bank]').addEventListener('input', (e) => { st.name = e.target.value; });
+    root.querySelector('[data-seg=mode]').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-value]');
+      if (b && b.dataset.value !== st.mode) { st.mode = b.dataset.value; draw(); }
+    });
+    root.querySelectorAll('[data-map]').forEach((sel) => {
+      sel.onchange = () => {
+        const v = sel.value === '' ? undefined : Number(sel.value);
+        if (v === undefined) delete st.mapping[sel.dataset.map]; else st.mapping[sel.dataset.map] = v;
+        draw();
+      };
+    });
+    root.querySelector('[data-fmt=date]').onchange = (e) => { st.dateFormat = e.target.value; draw(); };
+    root.querySelector('[data-fmt=decimal]').onchange = (e) => { st.decimal = e.target.value; draw(); };
+    root.querySelector('[data-acc]').onchange = (e) => { st.accountId = e.target.value; };
+    root.querySelector('[data-cancel]').onclick = () => s.close();
+    root.querySelector('[data-go]').onclick = async (e) => {
+      const name = st.name.trim() || (st.accountId ? M.account(st.accountId).name : '');
+      if (!name) { toast('Scrivi il nome della banca', { type: 'error' }); root.querySelector('[name=bank]').focus(); return; }
+      e.currentTarget.disabled = true;
+      try {
+        const res = await saveTemplateAndApply(m, { name, mapping: map, dateFormat: st.dateFormat, decimal: st.decimal, accountId: st.accountId || null });
+        showPlan(s, root, planImport(res));
+      } catch (ex) {
+        toast(ex.message, { type: 'error' });
+        e.currentTarget.disabled = false;
+      }
+    };
+  }
+  draw();
+}
+
 function showPlan(s, root, p) {
   const fmtD = (iso) => new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(`${iso}T12:00:00`));
   const n = p.added.length;
   const preview = p.added.slice(0, 6);
-  const accName = p.account ? p.account.name : `${p.st.bankName}${p.st.accountNumber ? ` ····${p.st.accountNumber.slice(-4)}` : ''}`;
+  const accLabel = (g) => g.account ? g.account.name : (g.def.name || `${p.st.bankName}${g.def.accountNumber ? ` ····${g.def.accountNumber.slice(-4)}` : ''}`);
   root.innerHTML = String(html`
     <h2>${p.st.bankName}</h2>
     <p>${p.st.kind} · dal ${fmtD(p.from)} al ${fmtD(p.to)}</p>
@@ -422,9 +520,8 @@ function showPlan(s, root, p) {
       <div><b>${p.duplicates}</b><span>già presenti</span></div>
     </div>
     <div class="list">
-      <div class="row static"><span class="row-label">Conto</span><span class="row-detail">${accName}${p.account ? '' : ' (nuovo)'}</span></div>
-      <div class="row static"><span class="row-label">Saldo</span><span class="row-detail">${p.st.balance != null ? formatCents(p.st.balance) : '—'}</span></div>
-      <div class="row static"><span class="row-label">Controllo dei saldi</span><span class="row-detail ${p.balanceOk ? 'ok' : 'ko'}">${p.balanceOk ? 'Tutto torna' : `${p.st.mismatches.length} righe da verificare`}</span></div>
+      ${p.groups.map((g) => html`<div class="row static"><span class="row-label">${accLabel(g)}${g.account ? '' : ' (nuovo)'}<small>${g.added.length} nuovi${g.updated.length ? ` · ${g.updated.length} aggiornati` : ''}</small></span><span class="row-detail">${g.def.balance != null ? formatCents(g.def.balance) : '—'}</span></div>`)}
+      <div class="row static"><span class="row-label">Controllo dei saldi</span><span class="row-detail ${p.balanceOk ? 'ok' : 'ko'}">${p.balanceOk ? 'Tutto torna' : 'Alcune righe da verificare'}</span></div>
     </div>
     ${preview.length ? html`
       <h3 class="group-title">Anteprima</h3>
@@ -443,7 +540,8 @@ function showPlan(s, root, p) {
     try {
       const r = await commitImport(p);
       s.close();
-      const nc = M.txs().filter((t) => t.accountId === r.account.id && t.categoryId === 'nc').length;
+      const ids = new Set(r.accounts.map((a) => a.id));
+      const nc = M.txs().filter((t) => ids.has(t.accountId) && t.categoryId === 'nc').length;
       toast(`${r.added} movimenti importati${nc ? ` · ${nc} da classificare` : ''}`, { duration: 3500 });
       location.hash = '#/movimenti';
     } catch (err) {

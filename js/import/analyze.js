@@ -76,7 +76,12 @@ export function analyze(row, { holder } = {}) {
   }
 
   let beneficiary = null;
-  if (out.method === 'ATM') {
+  const END = '(?:\\s+C\\. ?BENEF\\.|\\s+NOTE:|\\s+EUR\\b|\\s+Num\\.|\\s+Avviso|\\s+ABI-CAB:|\\s+BIC:|\\s+CRO:|\\s+Spese:|$)';
+  if (row.merchant) {
+    // Il lettore della banca sa già chi è l'esercente (es. Revolut).
+    out.merchant = row.merchant;
+    if ((m = /^(?:Pagamento (?:a favore di|da)|Payment from|Transfer (?:to|from))\s+(.+)$/i.exec(row.description || ''))) beneficiary = m[1];
+  } else if (out.method === 'ATM') {
     out.merchant = 'Prelievo bancomat';
   } else if (out.method === 'POS') {
     let s = raw.replace(/^.*?con carta \S+ \S+\s*/i, '').replace(/importo [\d.]+,\d{2} divisa \d{3}\s*/i, '');
@@ -88,16 +93,26 @@ export function analyze(row, { holder } = {}) {
     out.merchant = cleanMerchant(m[1]);
   } else if ((m = /a favore di (.+?) di importo/i.exec(raw))) {
     out.merchant = cleanMerchant(m[1]);
-  } else if ((m = /A FAVORE DI (.+?)(?:\s+C\. ?BENEF\.|\s+NOTE:|$)/i.exec(raw))) {
+  } else if ((m = new RegExp(`\\bo\\/c:?\\s+(.+?)${END}`, 'i').exec(raw))) {
+    // Bonifico ricevuto: "o/c" = ordinante.
+    beneficiary = m[1].trim();
+    out.merchant = cleanMerchant(beneficiary);
+  } else if ((m = new RegExp(`A FAVORE DI (.+?)${END}`, 'i').exec(raw))) {
     beneficiary = m[1].trim();
     out.merchant = titleCase(beneficiary);
-  } else if ((m = /BONIFICO (?:O\/C|DA|A VOSTRO FAVORE DA)\s+(.+?)(?:\s+BIC:|\s+CRO:|\s+NOTE:|$)/i.exec(raw))) {
+  } else if ((m = new RegExp(`BONIFICO (?:DA|A VOSTRO FAVORE DA)\\s+(.+?)${END}`, 'i').exec(raw))) {
     beneficiary = m[1].trim();
     out.merchant = cleanMerchant(beneficiary);
   } else if ((m = /Pac Fondo\s*:\s*(.+?)(?:\s+Dossier|$)/i.exec(raw))) {
     out.merchant = `PAC ${titleCase(m[1])}`;
   }
-  if (!out.merchant) out.merchant = titleCase(row.causale || '') || 'Movimento';
+  if (!out.merchant && row.causale && !(row.generic && raw)) out.merchant = titleCase(row.causale);
+  if (!out.merchant && raw) {
+    // File generici (CSV): l'esercente è nella descrizione, dopo parole come "PAGAMENTO POS".
+    const s = raw.replace(/^(PAGAMENTO( CON)?( POS| CARTA| CONTACTLESS)?|ADDEBITO( SDD| DIRETTO| DIRETTO SDD)?|ACCREDITO|BONIFICO( ISTANTANEO)?( A FAVORE DI| DA| A)?|POS|CARTA|DISPOSIZIONE)\s+/i, '');
+    out.merchant = cleanMerchant(s.split(/\s+/).slice(0, 5).join(' ').slice(0, 40));
+  }
+  if (!out.merchant) out.merchant = 'Movimento';
 
   // Bonifico tra conti propri: beneficiario (o ordinante) = intestatario del conto.
   if (beneficiary && sameHolder(beneficiary, holder)) out.toSelf = true;

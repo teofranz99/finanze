@@ -30,6 +30,13 @@ export async function ensureDefaults() {
   if (!S.list('categories').length) {
     await S.putMany('categories', DEFAULT_CATEGORIES.map((c, i) => ({ ...c, order: i })));
   }
+  // Categorie predefinite aggiunte con gli aggiornamenti dell'app: si aggiungono una volta sola
+  // (se poi le elimini, non tornano).
+  const seed = S.get('settings', 'seed') || { categories: S.list('categories').map((c) => c.id) };
+  const missing = DEFAULT_CATEGORIES.map((c, i) => ({ ...c, order: i })).filter((c) => !seed.categories.includes(c.id) && !S.get('categories', c.id));
+  if (missing.length) await S.putMany('categories', missing);
+  const allIds = [...new Set([...seed.categories, ...DEFAULT_CATEGORIES.map((c) => c.id)])];
+  if (!S.get('settings', 'seed') || allIds.length !== seed.categories.length) await S.put('settings', 'seed', { categories: allIds });
   // I prelievi sono un passaggio verso i contanti, non una spesa.
   const cash = S.get('categories', 'contanti');
   if (cash && cash.kind !== 'giroconto') await S.put('categories', 'contanti', { ...cash, kind: 'giroconto' });
@@ -76,17 +83,20 @@ export function parts(t) {
 
 // Entrate e uscite: giroconti e investimenti non contano. Un rimborso in una categoria di spesa
 // riduce le uscite.
+// Le spese straordinarie sono a parte: non entrano nelle uscite del periodo.
 export function totals(list) {
   let income = 0;
   let expense = 0;
+  let extraordinary = 0;
   for (const t of list) {
     for (const p of parts(t)) {
       const k = kindOf({ ...t, categoryId: p.categoryId, cents: p.cents });
       if (k === 'entrata') income += p.cents;
       else if (k === 'spesa') expense -= p.cents;
+      else if (k === 'straordinaria') extraordinary -= p.cents;
     }
   }
-  return { income, expense, net: income - expense };
+  return { income, expense, extraordinary, net: income - expense };
 }
 
 export function byCategory(list) {
@@ -140,6 +150,8 @@ export function classify(t) {
   for (const r of rules()) {
     if (r.pattern && mk.includes(r.pattern)) return { categoryId: r.categoryId, areaId: r.areaId ?? undefined, ruleId: r.id };
   }
+  // Indicazione data dal lettore della banca (es. interessi Revolut, commissioni BPER).
+  if (t.hint && S.get('categories', t.hint)) return { categoryId: t.hint };
   const causale = normalizeKey(t.causale);
   for (const r of CAUSALE_RULES) {
     if (r.words.some((w) => rx(w).test(causale))) return { categoryId: r.cat };
@@ -193,6 +205,24 @@ export function similarCount(t, categoryId) {
   const key = merchantKey(t.merchant);
   if (!key) return 0;
   return txs().filter((x) => x.id !== t.id && !x.manual?.category && merchantKey(x.merchant).includes(key) && x.categoryId !== categoryId).length;
+}
+
+// Abbina i giroconti: stessa cifra con segno opposto su due conti diversi, a pochi giorni
+// di distanza (es. −3.000 da Banca di Piacenza e +3.000 su BPER).
+export async function linkTransfers() {
+  const list = txs().filter((t) => kindOf(t) === 'giroconto' && t.categoryId !== 'contanti');
+  const open = list.filter((t) => !t.transferWith || !tx(t.transferWith));
+  const changed = new Map();
+  for (const a of open) {
+    if (changed.has(a.id) || a.cents >= 0) continue;
+    const b = open.find((x) => !changed.has(x.id) && x.id !== a.id && x.accountId !== a.accountId
+      && x.cents === -a.cents && Math.abs(Date.parse(x.date) - Date.parse(a.date)) <= 4 * 86400000);
+    if (!b) continue;
+    changed.set(a.id, { ...a, transferWith: b.id, transferAccountId: b.accountId });
+    changed.set(b.id, { ...b, transferWith: a.id, transferAccountId: a.accountId });
+  }
+  await S.putMany('tx', [...changed.values()]);
+  return changed.size / 2;
 }
 
 // Ricalcola tutti i movimenti non scelti a mano (dopo modifiche a regole o categorie).

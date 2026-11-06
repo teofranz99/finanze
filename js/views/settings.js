@@ -11,7 +11,7 @@ import { sectionById } from '../sections.js';
 import { biometricName } from '../platform.js';
 import { applyAppearance, currentPalette } from '../theme.js';
 import { PALETTES, getPalette } from '../palettes.js';
-import { accountsPage, categoriesPage, areasPage, rulesPage } from './data-settings.js';
+import { accountsPage, categoriesPage, areasPage, rulesPage, templatesPage } from './data-settings.js';
 import * as M from '../data/model.js';
 import { lockNow } from '../autolock.js';
 import { APP_VERSION } from '../version.js';
@@ -30,6 +30,7 @@ export function settingsView(el, rest) {
     case 'categorie': return categoriesPage(el);
     case 'aree': return areasPage(el);
     case 'regole': return rulesPage(el);
+    case 'modelli': return templatesPage(el);
     default: return rootPage(el);
   }
 }
@@ -61,6 +62,7 @@ function rootPage(el) {
             navRow({ href: '#/impostazioni/categorie', icon: 'tag', color: 'var(--s9)', label: 'Categorie' }),
             navRow({ href: '#/impostazioni/aree', icon: 'house', color: 'var(--s1)', label: 'Aree' }),
             navRow({ href: '#/impostazioni/regole', icon: 'sparkles', color: 'var(--s4)', label: 'Regole automatiche', detail: String(M.rules().length) }),
+            navRow({ href: '#/impostazioni/modelli', icon: 'doc', color: 'var(--s6)', label: 'Modelli di import' }),
           ],
         })}
         ${group({

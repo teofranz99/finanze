@@ -1,6 +1,7 @@
 // Importi in centesimi (interi) per evitare errori di arrotondamento.
 
-const eur = new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' });
+// useGrouping 'always': anche 4.869,75 € con il punto delle migliaia, come 16.738,22 €.
+const eur = new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR', useGrouping: 'always' });
 
 // "1.234,56" / "-3.000,00" → centesimi. null se non è un importo.
 export function parseItAmount(s) {

@@ -66,7 +66,7 @@ export const $ = (sel, root = document) => root.querySelector(sel);
 export const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 
 // --- Formattazione
-const eur = new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' });
+const eur = new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR', useGrouping: 'always' });
 export const formatEuro = (n) => eur.format(n);
 
 export function formatDateTime(ts) {
