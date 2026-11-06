@@ -68,6 +68,26 @@ export async function put(col, id, data) {
   return rec;
 }
 
+// Salva molti record della stessa collezione in una sola transazione. Ogni oggetto deve avere `id`.
+export async function putMany(col, items) {
+  if (!items.length) return [];
+  const now = Date.now();
+  const recs = items.map((data) => ({ col, id: data.id, data, updatedAt: now, deviceId: V.getDeviceId() }));
+  for (const r of recs) setLocal(r);
+  await persist(recs);
+  emit(col);
+  return recs;
+}
+
+export async function removeMany(col, ids) {
+  if (!ids.length) return;
+  const now = Date.now();
+  const recs = ids.map((id) => ({ col, id, data: null, deleted: true, updatedAt: now, deviceId: V.getDeviceId() }));
+  for (const r of recs) setLocal(r);
+  await persist(recs);
+  emit(col);
+}
+
 export async function remove(col, id) {
   const rec = { col, id, data: null, deleted: true, updatedAt: Date.now(), deviceId: V.getDeviceId() };
   setLocal(rec);

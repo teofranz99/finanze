@@ -1,0 +1,10 @@
+# Dati personali: non vanno MAI pubblicati.
+esempi/
+*.docx
+*.pdf
+*.csv
+*.xls
+*.xlsx
+
+# Strumenti locali
+.claude/

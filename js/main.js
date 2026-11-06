@@ -10,6 +10,7 @@ import { showSetup } from './views/setup.js';
 import { mountApp } from './app.js';
 import { startAutoLock } from './autolock.js';
 import { getSettings } from './settings.js';
+import { ensureDefaults } from './data/model.js';
 
 const root = document.getElementById('app');
 
@@ -22,6 +23,7 @@ function hideSplash() {
 
 async function onUnlocked() {
   await S.loadAll();
+  await ensureDefaults();
   mountApp(root);
   startAutoLock(() => getSettings().autoLockMinutes);
   // Chiede al browser di non cancellare i dati quando lo spazio scarseggia.

@@ -1,7 +1,7 @@
 // Service worker: rende l'app disponibile offline. Non tocca mai i dati (che stanno in IndexedDB).
 // Quando si pubblica una nuova versione, aumentare VERSION.
 
-const VERSION = '0.1.0';
+const VERSION = '0.4.1';
 const CACHE = `finanze-${VERSION}`;
 const ASSETS = [
   './',
@@ -24,6 +24,7 @@ const ASSETS = [
   'js/backup.js',
   'js/platform.js',
   'js/theme.js',
+  'js/palettes.js',
   'js/sections.js',
   'js/settings.js',
   'js/autolock.js',
@@ -39,6 +40,18 @@ const ASSETS = [
   'js/views/altro.js',
   'js/views/placeholder.js',
   'js/views/settings.js',
+  'js/views/movimenti.js',
+  'js/views/tx-ui.js',
+  'js/views/data-settings.js',
+  'js/money.js',
+  'js/data/defaults.js',
+  'js/data/model.js',
+  'js/import/pdftext.js',
+  'js/import/analyze.js',
+  'js/import/importer.js',
+  'js/import/bancadipiacenza.js',
+  'js/vendor/pdfjs/pdf.min.mjs',
+  'js/vendor/pdfjs/pdf.worker.min.mjs',
 ];
 
 const isDev = ['localhost', '127.0.0.1'].includes(self.location.hostname);

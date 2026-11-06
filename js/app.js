@@ -10,9 +10,11 @@ import { homeView } from './views/home.js';
 import { altroView } from './views/altro.js';
 import { placeholderView } from './views/placeholder.js';
 import { settingsView } from './views/settings.js';
+import { movimentiView } from './views/movimenti.js';
 
 const VIEWS = {
   home: homeView,
+  movimenti: movimentiView,
   altro: altroView,
   impostazioni: settingsView,
 };

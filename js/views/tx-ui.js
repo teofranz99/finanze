@@ -1,0 +1,455 @@
+// Componenti condivisi per i movimenti: icone, scelta categoria/area, dettaglio,
+// divisione, inserimento manuale e procedura di import.
+
+import { html, uid } from '../util.js';
+import { icon } from '../ui/icons.js';
+import { openSheet, confirmDialog, toast } from '../ui/sheet.js';
+import { formatCents, isoToday } from '../money.js';
+import * as M from '../data/model.js';
+import * as S from '../store.js';
+import { readStatement, plan as planImport, commit as commitImport } from '../import/importer.js';
+
+// ---------------------------------------------------------------- Formattazione
+export function txIcon(t, big = false) {
+  const c = t.splits?.length ? null : M.category(t.categoryId);
+  const name = c ? c.icon : 'split';
+  const color = c ? c.color : 'var(--s10)';
+  return html`<span class="tx-icon ${big ? 'big' : ''}" style="background:${color}">${icon(name)}</span>`;
+}
+
+export function amountClass(t) {
+  const k = M.kindOf(t);
+  if (k === 'giroconto' || k === 'investimento') return 'neutral';
+  return t.cents > 0 ? 'positive' : '';
+}
+
+const dayFmt = new Intl.DateTimeFormat('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
+const dayFmtY = new Intl.DateTimeFormat('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+export function dayLabel(iso) {
+  const today = isoToday();
+  const y = new Date(Date.now() - 86400000);
+  const p = (n) => String(n).padStart(2, '0');
+  const yesterday = `${y.getFullYear()}-${p(y.getMonth() + 1)}-${p(y.getDate())}`;
+  if (iso === today) return 'Oggi';
+  if (iso === yesterday) return 'Ieri';
+  const d = new Date(`${iso}T12:00:00`);
+  const s = (d.getFullYear() === new Date().getFullYear() ? dayFmt : dayFmtY).format(d);
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+export function subtitle(t) {
+  if (t.splits?.length) return `Diviso in ${t.splits.length} parti`;
+  const c = M.category(t.categoryId);
+  const a = M.area(t.areaId);
+  return [c?.name, a?.name].filter(Boolean).join(' · ');
+}
+
+// ---------------------------------------------------------------- Scelta categoria
+const KIND_GROUPS = [
+  ['spesa', 'Uscite'],
+  ['entrata', 'Entrate'],
+  ['altro', 'Altro'],
+];
+
+export function pickCategory(currentId) {
+  const cats = M.categories();
+  const groupOf = (c) => (c.kind === 'spesa' ? 'spesa' : c.kind === 'entrata' ? 'entrata' : 'altro');
+  const s = openSheet(html`
+    <div class="dialog picker">
+      <h2>Categoria</h2>
+      ${KIND_GROUPS.map(([g, label]) => {
+        const list = cats.filter((c) => groupOf(c) === g);
+        if (!list.length) return '';
+        return html`<h3 class="picker-title">${label}</h3>
+          <div class="cat-grid">${list.map((c) => html`
+            <button type="button" class="cat-chip ${c.id === currentId ? 'on' : ''}" data-id="${c.id}">
+              <span class="tx-icon" style="background:${c.color}">${icon(c.icon)}</span>
+              <span>${c.name}</span>
+            </button>`)}</div>`;
+      })}
+    </div>`);
+  s.el.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-id]');
+    if (b) s.close(b.dataset.id);
+  });
+  return s.closed;
+}
+
+// Restituisce l'id dell'area, '' per "nessuna area", null se annullato.
+export function pickArea(currentId) {
+  const list = M.areas();
+  const s = openSheet(html`
+    <div class="dialog picker">
+      <h2>Area</h2>
+      <div class="list">
+        ${list.map((a) => html`
+          <button type="button" class="row" data-id="${a.id}">
+            <span class="row-icon" style="background:${a.color}">${icon(a.icon)}</span>
+            <span class="row-label">${a.name}</span>
+            ${a.id === currentId ? html`<span class="row-check">${icon('check')}</span>` : ''}
+          </button>`)}
+        <button type="button" class="row" data-id="">
+          <span class="row-icon" style="background:var(--s10)">${icon('close')}</span>
+          <span class="row-label">Nessuna area</span>
+          ${!currentId ? html`<span class="row-check">${icon('check')}</span>` : ''}
+        </button>
+      </div>
+    </div>`);
+  s.el.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-id]');
+    if (b) s.close(b.dataset.id);
+  });
+  return s.closed;
+}
+
+// Cambia categoria a un movimento e propone di farne una regola per quell'esercente.
+export async function setCategory(t, categoryId, { askRule = true } = {}) {
+  if (!categoryId || categoryId === t.categoryId) return;
+  await S.put('tx', t.id, M.withCategory(t, categoryId));
+  if (categoryId === 'contanti') await M.ensureCashAccount();
+  if (!askRule || !t.merchant || categoryId === 'nc' || t.splits?.length) return;
+  const n = M.similarCount(t, categoryId);
+  const cat = M.category(categoryId);
+  const yes = await confirmDialog({
+    title: 'Usare sempre questa categoria?',
+    message: `I movimenti di «${t.merchant}» andranno in ${cat.name}.${n ? ` Vale anche per ${n} ${n === 1 ? 'movimento già importato' : 'movimenti già importati'}.` : ''}`,
+    confirmLabel: 'Sì, sempre',
+    cancelLabel: 'Solo questo',
+  });
+  if (yes) {
+    const changed = await M.saveRuleForMerchant(t.merchant, categoryId);
+    toast(changed ? `Regola creata · ${changed} movimenti aggiornati` : 'Regola creata');
+  }
+}
+
+export async function setArea(t, areaId) {
+  await S.put('tx', t.id, M.withArea(t, areaId || null));
+}
+
+// ---------------------------------------------------------------- Dettaglio
+export function openTxDetail(id) {
+  const s = openSheet(html`<div class="tx-detail"></div>`, { className: 'tall' });
+  const root = s.el.querySelector('.tx-detail');
+  const off = S.subscribe((col) => { if (col === 'tx' || col === '*') draw(); });
+  s.closed.then(off);
+
+  function draw() {
+    const t = M.tx(id);
+    if (!t) { s.close(); return; }
+    const acc = M.account(t.accountId);
+    const d = new Date(`${t.date}T12:00:00`);
+    root.innerHTML = String(html`
+      <div class="txd-head">
+        ${txIcon(t, true)}
+        <div class="txd-amount ${amountClass(t)}">${formatCents(t.cents, { sign: true })}</div>
+        ${t.origCurrency ? html`<div class="txd-orig">${(t.origCents / 100).toLocaleString('it-IT', { minimumFractionDigits: 2 })} ${t.origCurrency}</div>` : ''}
+        <div class="txd-merchant">${t.merchant}</div>
+        <div class="txd-meta">${new Intl.DateTimeFormat('it-IT', { dateStyle: 'full' }).format(d)}${acc ? ` · ${acc.name}` : ''}</div>
+        ${t.pending ? html`<span class="badge">Non ancora consolidato</span>` : ''}
+      </div>
+
+      <div class="list">
+        <button type="button" class="row" data-act="cat" ${t.splits?.length ? 'disabled' : ''}>
+          <span class="row-label">Categoria</span>
+          <span class="row-detail">${t.splits?.length ? 'Divisa' : M.category(t.categoryId).name}</span>
+          <span class="chev">${icon('chevron-right')}</span>
+        </button>
+        <button type="button" class="row" data-act="area" ${t.splits?.length ? 'disabled' : ''}>
+          <span class="row-label">Area</span>
+          <span class="row-detail">${t.splits?.length ? 'Divisa' : (M.area(t.areaId)?.name || 'Nessuna')}</span>
+          <span class="chev">${icon('chevron-right')}</span>
+        </button>
+        <button type="button" class="row" data-act="split">
+          <span class="row-label">${t.splits?.length ? 'Modifica la divisione' : 'Dividi tra aree o categorie'}</span>
+          <span class="chev">${icon('chevron-right')}</span>
+        </button>
+      </div>
+      ${t.splits?.length ? html`<div class="split-summary">${t.splits.map((p) => html`
+        <div><span>${M.category(p.categoryId).name}${p.areaId ? ` · ${M.area(p.areaId)?.name || ''}` : ''}</span><b>${formatCents(p.cents)}</b></div>`)}</div>` : ''}
+
+      <h3 class="group-title">Tag</h3>
+      <div class="list"><div class="row static tag-row">
+        ${(t.tags || []).map((g) => html`<button type="button" class="tag-chip" data-tag="${g}">#${g} ${icon('close')}</button>`)}
+        <input class="tag-input" placeholder="${t.tags?.length ? 'Aggiungi…' : 'Per esempio vacanza2027'}" enterkeyhint="done" autocapitalize="off">
+      </div></div>
+
+      <h3 class="group-title">Nota</h3>
+      <div class="list"><textarea class="note-input" rows="2" placeholder="Aggiungi una nota">${t.note || ''}</textarea></div>
+
+      <details class="txd-raw">
+        <summary>Dettagli dalla banca</summary>
+        <dl>
+          <dt>Data contabile</dt><dd>${t.date}</dd>
+          ${t.valueDate ? html`<dt>Valuta</dt><dd>${t.valueDate}</dd>` : ''}
+          ${t.opDate ? html`<dt>Operazione</dt><dd>${t.opDate} ${t.opTime || ''}</dd>` : ''}
+          ${t.causale ? html`<dt>Causale</dt><dd>${t.causale}</dd>` : ''}
+          ${t.description ? html`<dt>Descrizione</dt><dd>${t.description}</dd>` : ''}
+        </dl>
+      </details>
+
+      <div class="list danger-list"><button type="button" class="row destructive" data-act="delete"><span class="row-label">Elimina movimento</span></button></div>`);
+    wire(t);
+  }
+
+  function wire(t) {
+    root.querySelector('[data-act=cat]').onclick = async () => {
+      const c = await pickCategory(t.categoryId);
+      if (c) await setCategory(M.tx(id), c);
+    };
+    root.querySelector('[data-act=area]').onclick = async () => {
+      const a = await pickArea(t.areaId);
+      if (a !== null) await setArea(M.tx(id), a);
+    };
+    root.querySelector('[data-act=split]').onclick = () => openSplit(M.tx(id));
+    root.querySelector('[data-act=delete]').onclick = async () => {
+      const ok = await confirmDialog({
+        title: 'Eliminare il movimento?',
+        message: t.source === 'import' ? 'Se reimporti lo stesso estratto conto, tornerà.' : 'Non si può annullare.',
+        confirmLabel: 'Elimina',
+        destructive: true,
+      });
+      if (ok) { await S.remove('tx', id); s.close(); toast('Movimento eliminato'); }
+    };
+    const tagInput = root.querySelector('.tag-input');
+    const addTag = async () => {
+      const v = tagInput.value.trim().replace(/^#/, '').replace(/\s+/g, '');
+      if (!v) return;
+      const cur = M.tx(id);
+      if (!(cur.tags || []).includes(v)) await S.put('tx', id, { ...cur, tags: [...(cur.tags || []), v] });
+      else tagInput.value = '';
+    };
+    tagInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ',' || e.key === ' ') { e.preventDefault(); addTag(); } });
+    tagInput.addEventListener('blur', addTag);
+    root.querySelectorAll('[data-tag]').forEach((b) => {
+      b.onclick = async () => {
+        const cur = M.tx(id);
+        await S.put('tx', id, { ...cur, tags: (cur.tags || []).filter((g) => g !== b.dataset.tag) });
+      };
+    });
+    const note = root.querySelector('.note-input');
+    note.addEventListener('change', async () => {
+      const cur = M.tx(id);
+      if ((cur.note || '') !== note.value) await S.put('tx', id, { ...cur, note: note.value });
+    });
+  }
+
+  draw();
+}
+
+// ---------------------------------------------------------------- Divisione
+function parseEuroInput(v) {
+  const t = String(v).trim().replace(/\s/g, '').replace(/\.(?=\d{3}(\D|$))/g, '').replace(',', '.');
+  const n = Number(t);
+  return Number.isFinite(n) ? Math.round(n * 100) : null;
+}
+const euroInput = (cents) => (Math.abs(cents) / 100).toFixed(2).replace('.', ',');
+
+export function openSplit(t) {
+  const sign = t.cents < 0 ? -1 : 1;
+  const total = Math.abs(t.cents);
+  let parts = (t.splits?.length ? t.splits : [
+    { cents: t.cents, categoryId: t.categoryId, areaId: t.areaId },
+    { cents: 0, categoryId: t.categoryId, areaId: null },
+  ]).map((p) => ({ ...p, abs: Math.abs(p.cents) }));
+
+  const s = openSheet(html`<div class="dialog split-sheet"></div>`, { className: 'tall' });
+  const root = s.el.querySelector('.split-sheet');
+  const cats = M.categories();
+  const areas = M.areas();
+
+  function draw() {
+    const used = parts.reduce((a, p) => a + (p.abs || 0), 0);
+    const left = total - used;
+    root.innerHTML = String(html`
+      <h2>Dividi ${formatCents(total)}</h2>
+      <p>Per esempio un ordine Amazon in parte per casa e in parte per lavoro.</p>
+      <div class="split-parts">
+        ${parts.map((p, i) => html`
+          <div class="split-part" data-i="${i}">
+            <div class="split-top">
+              <label class="field money"><span>€</span><input class="text" inputmode="decimal" data-f="amount" value="${euroInput(p.abs)}"></label>
+              ${parts.length > 2 ? html`<button type="button" class="icon-btn" data-remove="${i}" aria-label="Rimuovi">${icon('close')}</button>` : ''}
+            </div>
+            <div class="split-selects">
+              <select data-f="cat">${cats.map((c) => html`<option value="${c.id}" ${c.id === p.categoryId ? 'selected' : ''}>${c.name}</option>`)}</select>
+              <select data-f="area"><option value="">Nessuna area</option>${areas.map((a) => html`<option value="${a.id}" ${a.id === p.areaId ? 'selected' : ''}>${a.name}</option>`)}</select>
+            </div>
+          </div>`)}
+      </div>
+      <button type="button" class="btn plain" data-add>${icon('plus')}<span>Aggiungi una parte</span></button>
+      <p class="split-left ${left === 0 ? 'ok' : 'ko'}">${left === 0 ? 'Le parti tornano con il totale' : left > 0 ? `Mancano ${formatCents(left)}` : `Hai superato il totale di ${formatCents(-left)}`}</p>
+      <div class="dialog-actions">
+        <button type="button" class="btn" data-save ${left !== 0 ? 'disabled' : ''}>Salva divisione</button>
+        ${t.splits?.length ? html`<button type="button" class="btn secondary" data-unsplit>Togli la divisione</button>` : ''}
+      </div>`);
+    wire();
+  }
+
+  function wire() {
+    root.querySelectorAll('.split-part').forEach((el) => {
+      const i = Number(el.dataset.i);
+      el.querySelector('[data-f=amount]').addEventListener('change', (e) => {
+        const v = parseEuroInput(e.target.value);
+        parts[i].abs = v == null ? 0 : Math.abs(v);
+        // Con due parti, la seconda si adegua da sola.
+        if (parts.length === 2) parts[1 - i].abs = Math.max(0, total - parts[i].abs);
+        draw();
+      });
+      el.querySelector('[data-f=cat]').onchange = (e) => {
+        parts[i].categoryId = e.target.value;
+        if (!parts[i].areaId) parts[i].areaId = M.category(e.target.value)?.areaId ?? null;
+        draw();
+      };
+      el.querySelector('[data-f=area]').onchange = (e) => { parts[i].areaId = e.target.value || null; };
+    });
+    root.querySelectorAll('[data-remove]').forEach((b) => { b.onclick = () => { parts.splice(Number(b.dataset.remove), 1); draw(); }; });
+    root.querySelector('[data-add]').onclick = () => {
+      const used = parts.reduce((a, p) => a + p.abs, 0);
+      parts.push({ abs: Math.max(0, total - used), categoryId: t.categoryId, areaId: null });
+      draw();
+    };
+    root.querySelector('[data-save]').onclick = async () => {
+      const splits = parts.filter((p) => p.abs > 0).map((p) => ({ cents: sign * p.abs, categoryId: p.categoryId, areaId: p.areaId || null }));
+      await S.put('tx', t.id, { ...M.tx(t.id), splits: splits.length > 1 ? splits : null });
+      s.close();
+      toast('Divisione salvata');
+    };
+    const un = root.querySelector('[data-unsplit]');
+    if (un) un.onclick = async () => { await S.put('tx', t.id, { ...M.tx(t.id), splits: null }); s.close(); };
+  }
+
+  draw();
+}
+
+// ---------------------------------------------------------------- Inserimento manuale
+export function openManualAdd() {
+  const accs = M.accounts();
+  let sign = -1;
+  let categoryId = 'nc';
+  const s = openSheet(html`
+    <form class="dialog manual-add" novalidate>
+      <h2>Nuovo movimento</h2>
+      <div class="segmented wide" data-seg="sign">
+        <button type="button" class="on" data-value="-1">Uscita</button>
+        <button type="button" data-value="1">Entrata</button>
+      </div>
+      <label class="field money big"><span>€</span><input class="text" name="amount" inputmode="decimal" placeholder="0,00" required></label>
+      <div class="field-group">
+        <label class="field"><input class="text" name="merchant" placeholder="Descrizione (per esempio Bar)" autocapitalize="sentences"></label>
+        <label class="field field-row"><span>Data</span><input class="text" type="date" name="date" value="${isoToday()}"></label>
+        <label class="field field-row"><span>Conto</span>
+          <select name="account">
+            ${accs.map((a) => html`<option value="${a.id}" ${a.type === 'contanti' ? 'selected' : ''}>${a.name}</option>`)}
+            ${accs.some((a) => a.type === 'contanti') ? '' : html`<option value="__cash" selected>Contanti</option>`}
+          </select>
+        </label>
+        <button type="button" class="field field-row picker-field" data-cat><span>Categoria</span><b>${M.category('nc').name}</b></button>
+      </div>
+      <p class="form-error" hidden></p>
+      <div class="dialog-actions">
+        <button type="submit" class="btn">Aggiungi</button>
+        <button type="button" class="btn secondary" data-cancel>Annulla</button>
+      </div>
+    </form>`);
+  const form = s.el.querySelector('form');
+  setTimeout(() => form.elements.amount.focus(), 350);
+  form.querySelector('[data-cancel]').onclick = () => s.close();
+  form.querySelector('[data-seg=sign]').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-value]');
+    if (!b) return;
+    sign = Number(b.dataset.value);
+    form.querySelectorAll('[data-seg=sign] button').forEach((x) => x.classList.toggle('on', x === b));
+  });
+  form.querySelector('[data-cat]').onclick = async () => {
+    const c = await pickCategory(categoryId);
+    if (c) { categoryId = c; form.querySelector('[data-cat] b').textContent = M.category(c).name; }
+  };
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    const cents = parseEuroInput(form.elements.amount.value);
+    const err = form.querySelector('.form-error');
+    if (!cents) { err.textContent = 'Scrivi un importo.'; err.hidden = false; return; }
+    let accountId = form.elements.account.value;
+    if (accountId === '__cash') accountId = (await M.ensureCashAccount()).id;
+    const merchant = form.elements.merchant.value.trim() || (sign < 0 ? 'Spesa' : 'Entrata');
+    const now = Date.now();
+    let t = {
+      id: uid(), accountId, date: form.elements.date.value || isoToday(), cents: sign * Math.abs(cents), currency: 'EUR',
+      causale: '', description: '', merchant, tags: [], note: '', splits: null, manual: {}, source: 'manual', seq: now, createdAt: now,
+    };
+    t = categoryId === 'nc' ? M.autoClassify(t) : M.withCategory(t, categoryId);
+    await S.put('tx', t.id, t);
+    s.close();
+    toast('Movimento aggiunto');
+  };
+}
+
+// ---------------------------------------------------------------- Import
+export function openImport() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'application/pdf,.pdf';
+  input.addEventListener('change', async () => {
+    const file = input.files[0];
+    if (!file) return;
+    const s = openSheet(html`<div class="dialog import-sheet"><div class="import-loading"><span class="spinner"></span><p>Lettura di «${file.name}»…</p></div></div>`, { className: 'tall' });
+    const root = s.el.querySelector('.import-sheet');
+    try {
+      const st = await readStatement(file);
+      showPlan(s, root, planImport(st));
+    } catch (e) {
+      console.error(e);
+      root.innerHTML = String(html`
+        <div class="import-error">${icon('doc')}<h2>File non importato</h2><p>${e.message}</p></div>
+        <div class="dialog-actions"><button type="button" class="btn" data-ok>OK</button></div>`);
+      root.querySelector('[data-ok]').onclick = () => s.close();
+    }
+  });
+  input.click();
+}
+
+function showPlan(s, root, p) {
+  const fmtD = (iso) => new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(`${iso}T12:00:00`));
+  const n = p.added.length;
+  const preview = p.added.slice(0, 6);
+  const accName = p.account ? p.account.name : `${p.st.bankName}${p.st.accountNumber ? ` ····${p.st.accountNumber.slice(-4)}` : ''}`;
+  root.innerHTML = String(html`
+    <h2>${p.st.bankName}</h2>
+    <p>${p.st.kind} · dal ${fmtD(p.from)} al ${fmtD(p.to)}</p>
+    <div class="import-stats">
+      <div><b>${n}</b><span>nuovi</span></div>
+      <div><b>${p.updated.length}</b><span>aggiornati</span></div>
+      <div><b>${p.duplicates}</b><span>già presenti</span></div>
+    </div>
+    <div class="list">
+      <div class="row static"><span class="row-label">Conto</span><span class="row-detail">${accName}${p.account ? '' : ' (nuovo)'}</span></div>
+      <div class="row static"><span class="row-label">Saldo</span><span class="row-detail">${p.st.balance != null ? formatCents(p.st.balance) : '—'}</span></div>
+      <div class="row static"><span class="row-label">Controllo dei saldi</span><span class="row-detail ${p.balanceOk ? 'ok' : 'ko'}">${p.balanceOk ? 'Tutto torna' : `${p.st.mismatches.length} righe da verificare`}</span></div>
+    </div>
+    ${preview.length ? html`
+      <h3 class="group-title">Anteprima</h3>
+      <div class="list">${preview.map(({ row, info }) => html`
+        <div class="row static"><span class="row-label">${info.merchant}</span><span class="row-detail">${formatCents(row.cents, { sign: true })}</span></div>`)}
+      </div>
+      ${n > preview.length ? html`<p class="group-footer">e altri ${n - preview.length}.</p>` : ''}` : ''}
+    <div class="dialog-actions">
+      <button type="button" class="btn" data-go ${n + p.updated.length === 0 ? 'disabled' : ''}>${n ? `Importa ${n} movimenti` : p.updated.length ? 'Aggiorna i movimenti' : 'Niente di nuovo'}</button>
+      <button type="button" class="btn secondary" data-cancel>Annulla</button>
+    </div>`);
+  root.querySelector('[data-cancel]').onclick = () => s.close();
+  root.querySelector('[data-go]').onclick = async (e) => {
+    e.currentTarget.disabled = true;
+    e.currentTarget.textContent = 'Importazione…';
+    try {
+      const r = await commitImport(p);
+      s.close();
+      const nc = M.txs().filter((t) => t.accountId === r.account.id && t.categoryId === 'nc').length;
+      toast(`${r.added} movimenti importati${nc ? ` · ${nc} da classificare` : ''}`, { duration: 3500 });
+      location.hash = '#/movimenti';
+    } catch (err) {
+      console.error(err);
+      toast(`Import non riuscito: ${err.message}`, { type: 'error' });
+      s.close();
+    }
+  };
+}

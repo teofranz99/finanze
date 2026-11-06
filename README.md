@@ -9,8 +9,8 @@ Il brief completo è in `Progetto Finanze Personali – brief per Claude Code.do
 
 | Fase | Contenuto | Stato |
 |---|---|---|
-| 1 | Fondamenta e sicurezza: PWA, design, barra personalizzabile, cifratura, sblocco con Face ID e password, chiave di recupero, backup cifrato | **fatta, da provare** |
-| 2 | Movimenti con la prima banca | da fare |
+| 1 | Fondamenta e sicurezza: PWA, design, barra personalizzabile, cifratura, sblocco con Face ID e password, chiave di recupero, backup cifrato, palette | fatta |
+| 2 | Movimenti: import PDF Banca di Piacenza (pdf.js), categorie, aree, regole, swipe, divisione, tag, Home con dati veri | **fatta, da provare** |
 | 3–10 | Vedi il brief | da fare |
 
 ## Scelte tecniche
@@ -33,6 +33,10 @@ python tools/serve.py
 ```
 
 Poi apri http://localhost:5173. Sul computer Face ID non c'è: si usa la password (o Windows Hello, se il browser supporta il PRF).
+
+## Cosa NON pubblicare
+
+La cartella `esempi/` contiene estratti conto veri, usati solo in locale per costruire i lettori dei file. Non va mai caricata su GitHub, come il `.docx` del brief. Si caricano solo `css`, `icons`, `js`, `index.html`, `manifest.webmanifest`, `sw.js` (e se serve `README.md`). Il file `.gitignore` le esclude già, se un giorno si userà git.
 
 ## Provare su iPhone
 

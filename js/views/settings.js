@@ -11,6 +11,8 @@ import { sectionById } from '../sections.js';
 import { biometricName } from '../platform.js';
 import { applyAppearance, currentPalette } from '../theme.js';
 import { PALETTES, getPalette } from '../palettes.js';
+import { accountsPage, categoriesPage, areasPage, rulesPage } from './data-settings.js';
+import * as M from '../data/model.js';
 import { lockNow } from '../autolock.js';
 import { APP_VERSION } from '../version.js';
 import * as V from '../vault.js';
@@ -24,6 +26,10 @@ export function settingsView(el, rest) {
     case 'sicurezza': return securityPage(el);
     case 'backup': return backupPage(el);
     case 'palette': return palettePage(el);
+    case 'conti': return accountsPage(el);
+    case 'categorie': return categoriesPage(el);
+    case 'aree': return areasPage(el);
+    case 'regole': return rulesPage(el);
     default: return rootPage(el);
   }
 }
@@ -46,6 +52,15 @@ function rootPage(el) {
             navRow({ href: '#/impostazioni/barra', icon: 'tabbar', color: 'var(--s1)', label: 'Barra delle sezioni' }),
             navRow({ href: '#/impostazioni/sicurezza', icon: 'lock', color: 'var(--s2)', label: 'Sicurezza e sblocco' }),
             navRow({ href: '#/impostazioni/backup', icon: 'cloud-up', color: 'var(--s5)', label: 'Backup e sincronizzazione', detail: lastBackup ? relativeTime(lastBackup) : 'Mai' }),
+          ],
+        })}
+        ${group({
+          title: 'Dati',
+          rows: [
+            navRow({ href: '#/impostazioni/conti', icon: 'bank', color: 'var(--s5)', label: 'Conti', detail: String(M.accounts().length) }),
+            navRow({ href: '#/impostazioni/categorie', icon: 'tag', color: 'var(--s9)', label: 'Categorie' }),
+            navRow({ href: '#/impostazioni/aree', icon: 'house', color: 'var(--s1)', label: 'Aree' }),
+            navRow({ href: '#/impostazioni/regole', icon: 'sparkles', color: 'var(--s4)', label: 'Regole automatiche', detail: String(M.rules().length) }),
           ],
         })}
         ${group({
