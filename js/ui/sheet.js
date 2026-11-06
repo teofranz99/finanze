@@ -36,11 +36,69 @@ export function openSheet(content, { dismissible = true, className = '' } = {}) 
     setTimeout(finish, 450);
   }
 
-  if (dismissible) layer.querySelector('.sheet-backdrop').addEventListener('click', () => close(null));
+  if (dismissible) {
+    layer.querySelector('.sheet-backdrop').addEventListener('click', () => close(null));
+    enableDragToDismiss(layer, () => close(null));
+  }
   document.addEventListener('keydown', onKey);
   requestAnimationFrame(() => requestAnimationFrame(() => layer.classList.add('open')));
 
   return { el: layer.querySelector('.sheet-content'), close, closed: closedP };
+}
+
+// Come su iOS: trascinando il foglio verso il basso (dalla maniglia, o dal contenuto quando
+// è già in cima) il foglio segue il dito; oltre una certa distanza, o con un gesto veloce, si chiude.
+function enableDragToDismiss(layer, onDismiss) {
+  const sheet = layer.querySelector('.sheet');
+  const backdrop = layer.querySelector('.sheet-backdrop');
+  const isBottomSheet = () => !matchMedia('(min-width: 640px)').matches;
+  let startY = null;
+  let startT = 0;
+  let dy = 0;
+  let dragging = false;
+  let onGrabber = false;
+
+  sheet.addEventListener('touchstart', (e) => {
+    startY = null;
+    if (!isBottomSheet() || e.touches.length !== 1) return;
+    onGrabber = !!e.target.closest('.sheet-grabber');
+    if (!onGrabber && (sheet.scrollTop > 0 || e.target.closest('input, textarea, select, .csv-preview'))) return;
+    startY = e.touches[0].clientY;
+    startT = performance.now();
+    dy = 0;
+    dragging = false;
+  }, { passive: true });
+
+  sheet.addEventListener('touchmove', (e) => {
+    if (startY == null) return;
+    const d = e.touches[0].clientY - startY;
+    if (!dragging) {
+      if (d > 8 && (onGrabber || sheet.scrollTop <= 0)) {
+        dragging = true;
+        sheet.style.transition = 'none';
+        backdrop.style.transition = 'none';
+      } else if (d < -8) { startY = null; return; } else return;
+    }
+    e.preventDefault();
+    dy = Math.max(0, d);
+    sheet.style.transform = `translateY(${dy}px)`;
+    backdrop.style.opacity = String(Math.max(0.15, 1 - dy / Math.max(1, sheet.offsetHeight)));
+  }, { passive: false });
+
+  const end = () => {
+    if (startY == null) return;
+    startY = null;
+    if (!dragging) return;
+    dragging = false;
+    const speed = dy / Math.max(1, performance.now() - startT);  // px/ms
+    sheet.style.transition = '';
+    backdrop.style.transition = '';
+    sheet.style.transform = '';
+    backdrop.style.opacity = '';
+    if (dy > Math.min(150, sheet.offsetHeight * 0.3) || (speed > 0.5 && dy > 40)) onDismiss();
+  };
+  sheet.addEventListener('touchend', end);
+  sheet.addEventListener('touchcancel', end);
 }
 
 export function confirmDialog({ title, message, confirmLabel = 'Conferma', cancelLabel = 'Annulla', destructive = false }) {

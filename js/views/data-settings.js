@@ -35,7 +35,7 @@ export function accountsPage(el) {
         ${list.length ? group({
           rows: list.map((a) => html`
             <button type="button" class="row" data-id="${a.id}">
-              ${rowIcon(a.type === 'contanti' ? 'cash' : 'bank', 'var(--s5)')}
+              ${rowIcon(a.type === 'contanti' ? 'cash' : 'bank', M.accountColor(a))}
               <span class="row-label">${a.name}<small>${ROLES.find((r) => r[0] === (a.role || 'spendibile'))[1]}${a.balance?.asOf ? ` · saldo al ${formatShort(a.balance.asOf)}` : ''}</small></span>
               <span class="row-detail">${formatCents(M.accountBalance(a))}</span>
               <span class="chev">${icon('chevron-right')}</span>
@@ -58,6 +58,11 @@ export function editAccount(a) {
       ${a.type === 'contanti' ? html`
         <label class="field field-row"><span>In tasca adesso</span><input class="text" name="cash" inputmode="decimal" value="${(M.accountBalance(a) / 100).toFixed(2).replace('.', ',')}"></label>
         <p class="group-footer">I prelievi al bancomat aumentano i contanti, le spese che segni sul conto «Contanti» li diminuiscono. Se il totale non torna, correggilo qui.</p>` : ''}
+      <h3 class="picker-title">Colore nei grafici</h3>
+      <div class="swatches" data-acc-colors>
+        <button type="button" class="swatch auto ${!a.color ? 'on' : ''}" data-color="" aria-label="Automatico">A</button>
+        ${PICKABLE_COLORS.map((c) => html`<button type="button" class="swatch ${a.color === c ? 'on' : ''}" data-color="${c}" style="background:${c}" aria-label="Colore"></button>`)}
+      </div>
       <h3 class="picker-title">Ruolo</h3>
       <div class="segmented wide" data-seg="role">${ROLES.map(([v, l]) => html`<button type="button" class="${(a.role || 'spendibile') === v ? 'on' : ''}" data-value="${v}">${l}</button>`)}</div>
       <div class="dialog-actions">
@@ -67,6 +72,13 @@ export function editAccount(a) {
     </form>`);
   const form = s.el.querySelector('form');
   let role = a.role || 'spendibile';
+  let color = a.color || null;
+  form.querySelectorAll('[data-acc-colors] [data-color]').forEach((b) => {
+    b.onclick = () => {
+      color = b.dataset.color || null;
+      form.querySelectorAll('[data-acc-colors] [data-color]').forEach((x) => x.classList.toggle('on', x === b));
+    };
+  });
   form.querySelector('[data-seg=role]').addEventListener('click', (e) => {
     const b = e.target.closest('[data-value]');
     if (!b) return;
@@ -75,7 +87,7 @@ export function editAccount(a) {
   });
   form.onsubmit = async (e) => {
     e.preventDefault();
-    const next = { ...a, name: form.elements.name.value.trim() || a.name, role };
+    const next = { ...a, name: form.elements.name.value.trim() || a.name, role, color };
     if (a.type === 'contanti' && form.elements.cash) {
       const n = Number(form.elements.cash.value.trim().replace(/\s/g, '').replace(/\.(?=\d{3}(\D|$))/g, '').replace(',', '.'));
       if (Number.isFinite(n)) next.openingCents = Math.round(n * 100) - M.accountMovementsCents(a);

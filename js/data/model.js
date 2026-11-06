@@ -122,6 +122,14 @@ export function accountBalance(a) {
   return a.balance?.cents ?? 0;
 }
 
+// Colore del conto nei grafici: quello scelto, altrimenti uno della palette in base all'ordine.
+const AUTO_COLORS = ['var(--s1)', 'var(--s2)', 'var(--s5)', 'var(--s3)', 'var(--s4)', 'var(--s6)', 'var(--s7)', 'var(--s8)', 'var(--s9)', 'var(--s10)'];
+export function accountColor(a) {
+  if (a.color) return a.color;
+  const i = accounts().findIndex((x) => x.id === a.id);
+  return AUTO_COLORS[Math.max(0, i) % AUTO_COLORS.length];
+}
+
 export function wealth() {
   const list = accounts().map((a) => ({ account: a, cents: accountBalance(a) }));
   const sum = (role) => list.filter((x) => (x.account.role || 'spendibile') === role).reduce((s, x) => s + x.cents, 0);

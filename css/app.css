@@ -1050,7 +1050,7 @@ input[type="date"].text { color: var(--label2); }
 
 /* Home: legenda e mese */
 .legend { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 8px; }
-.legend li { display: grid; grid-template-columns: 12px 1fr auto 40px; gap: 10px; align-items: center; font-size: 14px; }
+.legend li { display: block; font-size: 14px; }
 .legend i { width: 12px; height: 12px; border-radius: 4px; }
 .legend span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .legend b { font-variant-numeric: tabular-nums; font-weight: 600; }
@@ -1077,6 +1077,7 @@ button.next-card { appearance: none; border: 0; width: 100%; text-align: left; f
 .swatches { display: flex; flex-wrap: wrap; gap: 10px; }
 .swatch { appearance: none; border: 0; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; }
 .swatch.on { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--label); }
+.swatch.auto { background: var(--fill2); color: var(--label2); font-size: 13px; font-weight: 700; }
 .icon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); gap: 6px; }
 .icon-pick { appearance: none; border: 0; height: 44px; border-radius: 11px; background: var(--bg-elev); color: var(--label); display: grid; place-items: center; cursor: pointer; }
 .icon-pick.on { background: var(--tint); color: var(--on-tint, #fff); }
@@ -1087,7 +1088,7 @@ button.next-card { appearance: none; border: 0; width: 100%; text-align: left; f
 .extra-note .icon { width: 16px; height: 16px; color: var(--s8); }
 .totals-card .extra-note { margin-top: 4px; }
 .small { font-size: 13px; }
-.legend a { display: grid; grid-template-columns: 12px 1fr auto 40px; gap: 10px; align-items: center; color: inherit; }
+.legend a { display: grid; grid-template-columns: 12px minmax(0, 1fr) auto 40px; gap: 10px; align-items: center; color: inherit; padding: 3px 0; }
 
 .account-hero { display: grid; gap: 4px; }
 .acc-type { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.02em; color: var(--label2); }
@@ -1181,7 +1182,10 @@ button.next-card { appearance: none; border: 0; width: 100%; text-align: left; f
 }
 .sheet-layer.open .sheet-backdrop { opacity: 1; }
 .sheet-layer.open .sheet { transform: none; }
-.sheet-grabber { width: 36px; height: 5px; border-radius: 3px; background: var(--fill2); margin: 0 auto 6px; }
+/* Maniglia sempre visibile in cima al foglio, con un'area di presa ampia. */
+.sheet-grabber { position: sticky; top: -6px; z-index: 5; width: 36px; height: 5px; border-radius: 3px; background: var(--fill2); margin: 0 auto 6px; touch-action: none; }
+.sheet-grabber::before { content: ""; position: absolute; inset: -14px -80px; }
+.sheet { overscroll-behavior: contain; }
 .dialog { display: grid; gap: 12px; padding: 12px 20px 4px; }
 .dialog h2 { font-size: 22px; font-weight: 700; }
 .dialog > p { color: var(--label2); font-size: 15px; line-height: 1.45; }

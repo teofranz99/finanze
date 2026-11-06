@@ -10,8 +10,6 @@ import * as DB from '../db.js';
 import { openImport } from './tx-ui.js';
 import { showCategoryThisMonth } from './movimenti.js';
 
-const SLICE_COLORS = ['var(--s1)', 'var(--s2)', 'var(--s5)', 'var(--s3)', 'var(--s4)', 'var(--s6)', 'var(--s7)', 'var(--s8)', 'var(--s9)', 'var(--s10)'];
-
 function donut(slices) {
   const total = slices.reduce((s, x) => s + x.cents, 0);
   if (total <= 0) {
@@ -41,7 +39,7 @@ export function homeView(el) {
     const today = new Intl.DateTimeFormat('it-IT', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date());
     const w = M.wealth();
     const accs = w.list.filter((x) => (x.account.role || 'spendibile') !== 'vincolato');
-    const slices = accs.filter((x) => x.cents > 0).map((x, i) => ({ ...x, color: SLICE_COLORS[i % SLICE_COLORS.length] }));
+    const slices = accs.filter((x) => x.cents > 0).map((x) => ({ ...x, color: M.accountColor(x.account) }));
     const hasData = M.accounts().length > 0;
 
     const monthStart = `${isoToday().slice(0, 7)}-01`;
