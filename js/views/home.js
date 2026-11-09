@@ -8,14 +8,17 @@ import * as M from '../data/model.js';
 import * as S from '../store.js';
 import * as DB from '../db.js';
 import { openImport } from './tx-ui.js';
-import { showCategoryThisMonth } from './movimenti.js';
+import { showCategoryInMonth } from './movimenti.js';
 import { todoItems } from '../data/todo.js';
 import * as P from '../data/plan.js';
 import * as F from '../data/funds.js';
 import * as B from '../data/budgets.js';
 import { openSheet } from '../ui/sheet.js';
 import { budgetBar } from './budget.js';
-import { fmtShort } from '../dates.js';
+import { fmtShort, fmtMonth, addMonths, monthEnd } from '../dates.js';
+
+// Mese mostrato nella scheda del mese (0 = questo mese, -1 = il precedente…).
+let monthOffset = 0;
 
 const FUNDS_COLOR = 'var(--label3)';
 
@@ -68,12 +71,19 @@ export function homeView(el) {
     const fc = hasData ? P.forecast() : null;
     const budgets = B.status().slice(0, 4);
 
-    const monthStart = `${isoToday().slice(0, 7)}-01`;
-    const monthTx = M.txs().filter((t) => t.date >= monthStart);
+    const curStart = `${isoToday().slice(0, 7)}-01`;
+    const firstTx = M.txs().reduce((m, t) => (t.date < m ? t.date : m), curStart);
+    const minOffset = -((Number(curStart.slice(0, 4)) - Number(firstTx.slice(0, 4))) * 12 + Number(curStart.slice(5, 7)) - Number(firstTx.slice(5, 7)));
+    monthOffset = Math.max(minOffset, Math.min(0, monthOffset));
+    const monthStart = addMonths(curStart, monthOffset);
+    const monthLast = monthEnd(monthStart);
+    const monthTx = M.txs().filter((t) => t.date >= monthStart && t.date <= monthLast);
     const tot = M.totals(monthTx);
     const topCats = M.byCategory(monthTx).slice(0, 5);
     const maxCat = topCats[0]?.cents || 1;
-    const monthName = new Intl.DateTimeFormat('it-IT', { month: 'long' }).format(new Date());
+    const monthName = monthOffset === 0
+      ? new Intl.DateTimeFormat('it-IT', { month: 'long' }).format(new Date())
+      : (monthStart.slice(0, 4) === curStart.slice(0, 4) ? new Intl.DateTimeFormat('it-IT', { month: 'long' }).format(new Date(`${monthStart}T12:00:00`)) : fmtMonth(monthStart));
     const lastImport = M.accounts().map((a) => a.lastImportAt || 0).sort((a, b) => b - a)[0];
     const todo = todoItems();
 
@@ -106,7 +116,11 @@ export function homeView(el) {
           </section>
 
           <section class="card month-card">
-            <h2 class="card-title">${monthName.charAt(0).toUpperCase() + monthName.slice(1)}</h2>
+            <div class="month-switch">
+              <button type="button" class="month-nav" data-month="-1" aria-label="Mese precedente" ${monthOffset <= minOffset ? 'disabled' : ''}>${icon('chevron-left')}</button>
+              <h2 class="card-title">${monthName.charAt(0).toUpperCase() + monthName.slice(1)}</h2>
+              <button type="button" class="month-nav" data-month="1" aria-label="Mese successivo" ${monthOffset >= 0 ? 'disabled' : ''}>${icon('chevron-right')}</button>
+            </div>
             <div class="month-totals">
               <div><span>Entrate</span><b class="positive">${formatCents(tot.income)}</b></div>
               <div><span>Uscite</span><b>${formatCents(tot.expense)}</b></div>
@@ -158,8 +172,11 @@ export function homeView(el) {
     const ft = el.querySelector('[data-funds-toggle]');
     if (ft) ft.onchange = () => P.updatePlanSettings({ fundsInTotal: ft.checked });
     el.querySelector('[data-import]').onclick = openImport;
+    el.querySelectorAll('[data-month]').forEach((b) => {
+      b.onclick = () => { monthOffset += Number(b.dataset.month); const y = window.scrollY; draw(); window.scrollTo(0, y); };
+    });
     el.querySelectorAll('[data-cat]').forEach((a) => {
-      a.onclick = (e) => { e.preventDefault(); showCategoryThisMonth(a.dataset.cat); };
+      a.onclick = (e) => { e.preventDefault(); showCategoryInMonth(a.dataset.cat, monthStart.slice(0, 7)); };
     });
     DB.metaGet('lastBackupAt').then((ts) => {
       const span = el.querySelector('[data-sync]');

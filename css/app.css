@@ -1386,6 +1386,13 @@ button.hero-card:active { transform: scale(0.99); }
   .print-root.report .receipt img { max-width: 100%; max-height: 24cm; object-fit: contain; }
 }
 
+.month-switch { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+.month-switch .card-title { margin: 0; flex: 1; text-align: center; }
+.month-nav { appearance: none; border: 0; background: var(--fill); color: var(--tint); width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; cursor: pointer; flex: none; }
+.month-nav .icon { width: 18px; height: 18px; stroke-width: 2.4; }
+.month-nav:disabled { color: var(--label3); background: none; cursor: default; }
+.month-nav:not(:disabled):active { transform: scale(0.92); }
+
 /* ------------------------------------------------------------ Stampa della chiave di recupero */
 .print-root { display: none; }
 @media print {

@@ -27,10 +27,20 @@ const PERIODS = [
 const filters = { period: '3m', accountId: '', categoryId: '', areaId: '', q: '' };
 const PAGE = 150;
 
-// Apre i Movimenti filtrati su una categoria del mese in corso (dalla Home).
-export function showCategoryThisMonth(categoryId) {
-  Object.assign(filters, { period: 'month', accountId: '', categoryId, areaId: '', q: '' });
+// Apre i Movimenti filtrati su una categoria in un mese (dalla Home). month: 'aaaa-mm'.
+export function showCategoryInMonth(categoryId, month) {
+  const period = month === isoToday().slice(0, 7) ? 'month' : `m:${month}`;
+  Object.assign(filters, { period, accountId: '', categoryId, areaId: '', q: '' });
   location.hash = '#/movimenti';
+}
+export const showCategoryThisMonth = (categoryId) => showCategoryInMonth(categoryId, isoToday().slice(0, 7));
+
+function periodLabel(period) {
+  if (period.startsWith('m:')) {
+    const s = new Intl.DateTimeFormat('it-IT', { month: 'long', year: 'numeric' }).format(new Date(`${period.slice(2)}-15T12:00:00`));
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+  return PERIODS.find((p) => p[0] === period)?.[1] || 'Periodo';
 }
 
 // Apre i Movimenti di un solo conto, su tutto il periodo.
@@ -43,6 +53,10 @@ function range(period) {
   const now = new Date();
   const p = (n) => String(n).padStart(2, '0');
   const iso = (d) => `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+  if (period.startsWith('m:')) {
+    const [y, m] = period.slice(2).split('-').map(Number);
+    return [`${period.slice(2)}-01`, iso(new Date(y, m, 0))];
+  }
   switch (period) {
     case 'month': return [iso(new Date(now.getFullYear(), now.getMonth(), 1)), isoToday()];
     case 'prev': return [iso(new Date(now.getFullYear(), now.getMonth() - 1, 1)), iso(new Date(now.getFullYear(), now.getMonth(), 0))];
@@ -124,7 +138,7 @@ export function movimentiView(el, rest = []) {
       body: html`
         <div class="search-bar">${icon('search')}<input type="search" placeholder="Cerca esercente, nota, #tag" value="${filters.q}" data-search enterkeyhint="search"></div>
         <div class="chips">
-          ${chip('period', PERIODS.find((p) => p[0] === filters.period)[1], filters.period !== 'all')}
+          ${chip('period', periodLabel(filters.period), filters.period !== 'all')}
           ${chip('account', accName, !!filters.accountId)}
           ${chip('category', catName, !!filters.categoryId)}
           ${chip('area', areaName, !!filters.areaId)}
