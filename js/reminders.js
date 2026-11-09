@@ -33,12 +33,14 @@ export async function updateAlertSettings(patch) {
   await S.put('settings', 'alerts', { ...(S.get('settings', 'alerts') || {}), ...patch });
 }
 
-// Testo passato al Comando Rapido: titolo e data nel formato italiano "gg/mm/aaaa hh:mm".
+// Testo passato al Comando Rapido: titolo e data scritta per esteso, per esempio
+// «Rinnovo abbonamento – 10 novembre 2026 alle 09:00». Con «gg/mm/aaaa hh:mm» iOS
+// riconosceva a volte solo il giorno, e il promemoria rifiutava l'avviso senza ora.
+const MONTHS = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre'];
 export function payload({ title, date }) {
   const st = alertSettings();
   const d = fromIso(date);
-  const p = (n) => String(n).padStart(2, '0');
-  return `${title} – ${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()} ${st.hour || '09:00'}`;
+  return `${title} – ${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()} alle ${st.hour || '09:00'}`;
 }
 
 export function shortcutUrl(opts) {

@@ -186,7 +186,7 @@ function guidePage(el) {
       back: { href: 'impostazioni/avvisi', label: 'Avvisi' },
       large: false,
       body: html`
-        <p class="page-intro">Finanze manda al Comando Rapido un testo come «Rinnovo abbonamento – 01/12/2026 09:00». Il comando ne ricava la data e crea l'avviso. Va fatto una volta sola, in circa 5 minuti, sull'iPhone.</p>
+        <p class="page-intro">Finanze manda al Comando Rapido un testo come «Rinnovo abbonamento – 1 dicembre 2026 alle 09:00». Il comando ne ricava la data e crea l'avviso. Va fatto una volta sola, in circa 5 minuti, sull'iPhone.</p>
 
         <section class="group">
           <h3 class="group-title">Per quale modalità?</h3>
