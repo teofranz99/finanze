@@ -1218,6 +1218,8 @@ button.next-card { appearance: none; border: 0; width: 100%; text-align: left; f
 .date-inline, .time-inline, .name-inline { width: auto; max-width: 55%; text-align: right; color: var(--label2); padding: 10px 0; font-size: 16px; }
 .name-inline { min-width: 0; flex: 1; }
 .row.prose ol { margin: 0; padding-left: 20px; display: grid; gap: 8px; }
+.guide-steps { gap: 12px !important; }
+.guide-steps li::marker { font-weight: 700; color: var(--tint); }
 .row.prose p + p, .row.prose ol + p { margin-top: 8px; }
 .row.prose code { font-family: var(--mono); font-size: 14px; background: var(--fill); padding: 1px 5px; border-radius: 5px; }
 .row.tinted .row-label { color: var(--tint); }

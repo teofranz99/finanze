@@ -1,24 +1,25 @@
 // Promemoria nel Calendario e nei Promemoria di iPhone, creati da un Comando Rapido.
 // Senza server l'app non può mandare notifiche: apre Comandi Rapidi con un link
-// shortcuts://run-shortcut e gli passa un piccolo testo JSON (titolo, data, dove crearlo).
-// I titoli sono minimi e senza importi.
+// shortcuts://run-shortcut e gli passa un testo semplice, per esempio
+// «Rinnovo abbonamento – 01/12/2026 09:00». Il Comando Rapido ricava la data dal testo
+// (azione «Ottieni date») e usa il testo come titolo. I titoli sono minimi e senza importi.
+// C'è un Comando Rapido per ogni modalità, così ognuno ha solo 2 o 3 azioni.
 
 import * as S from './store.js';
 import { fromIso } from './dates.js';
 
 // Le quattro modalità del brief: dove va la notifica e dove resta solo il promemoria scritto.
 export const MODES = [
-  { id: 'cal', label: 'Solo Calendario', desc: 'Un evento nel Calendario, con notifica.', calendario: 'notifica', promemoria: 'no' },
-  { id: 'rem', label: 'Solo Promemoria', desc: 'Un promemoria, con notifica.', calendario: 'no', promemoria: 'notifica' },
-  { id: 'cal+rem', label: 'Calendario + notifica dai Promemoria', desc: 'Evento nel Calendario senza notifica; la notifica arriva dai Promemoria.', calendario: 'silenzioso', promemoria: 'notifica' },
-  { id: 'rem+cal', label: 'Promemoria + notifica dal Calendario', desc: 'Promemoria scritto senza notifica; la notifica arriva dall\'evento del Calendario.', calendario: 'notifica', promemoria: 'silenzioso' },
+  { id: 'cal', label: 'Solo Calendario', desc: 'Un evento nel Calendario, con notifica.', shortcut: 'Finanze Calendario', steps: [['evento', true]] },
+  { id: 'rem', label: 'Solo Promemoria', desc: 'Un promemoria, con notifica.', shortcut: 'Finanze Promemoria', steps: [['promemoria', true]] },
+  { id: 'cal+rem', label: 'Calendario + notifica dai Promemoria', desc: 'Evento nel Calendario senza notifica; la notifica arriva dai Promemoria.', shortcut: 'Finanze Calendario e Promemoria', steps: [['evento', false], ['promemoria', true]] },
+  { id: 'rem+cal', label: 'Promemoria + notifica dal Calendario', desc: "Promemoria scritto senza notifica; la notifica arriva dall'evento del Calendario.", shortcut: 'Finanze Promemoria e Calendario', steps: [['promemoria', false], ['evento', true]] },
 ];
 export const modeById = (id) => MODES.find((m) => m.id === id) || MODES[0];
 
 export const DEFAULT_ALERTS = {
   via: 'shortcuts',   // 'shortcuts' (Comandi Rapidi) oppure 'ics' (file calendario)
   mode: 'cal',
-  shortcut: 'Finanze Promemoria',
   hour: '09:00',
   namesInTitle: false,
   importEvery: 'mese',
@@ -32,27 +33,17 @@ export async function updateAlertSettings(patch) {
   await S.put('settings', 'alerts', { ...(S.get('settings', 'alerts') || {}), ...patch });
 }
 
-// Testo passato al Comando Rapido. La data è nel formato italiano "gg/mm/aaaa hh:mm",
-// che Comandi Rapidi riconosce con l'azione «Ottieni date dall'input».
-export function payload({ title, date, mode }) {
+// Testo passato al Comando Rapido: titolo e data nel formato italiano "gg/mm/aaaa hh:mm".
+export function payload({ title, date }) {
   const st = alertSettings();
-  const m = modeById(mode || st.mode);
   const d = fromIso(date);
   const p = (n) => String(n).padStart(2, '0');
-  const when = `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()} ${st.hour || '09:00'}`;
-  return {
-    titolo: title,
-    data: when,
-    calendario: m.calendario,
-    promemoria: m.promemoria,
-    note: 'Apri Finanze per decidere cosa fare.',
-  };
+  return `${title} – ${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()} ${st.hour || '09:00'}`;
 }
 
 export function shortcutUrl(opts) {
-  const st = alertSettings();
-  const text = JSON.stringify(payload(opts));
-  return `shortcuts://run-shortcut?name=${encodeURIComponent(st.shortcut || DEFAULT_ALERTS.shortcut)}&input=text&text=${encodeURIComponent(text)}`;
+  const m = modeById(opts.mode || alertSettings().mode);
+  return `shortcuts://run-shortcut?name=${encodeURIComponent(m.shortcut)}&input=text&text=${encodeURIComponent(payload(opts))}`;
 }
 
 // Apre Comandi Rapidi. Restituisce il link (utile per le prove sul computer).
