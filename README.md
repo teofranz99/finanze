@@ -10,8 +10,10 @@ Il brief completo è in `Progetto Finanze Personali – brief per Claude Code.do
 | Fase | Contenuto | Stato |
 |---|---|---|
 | 1 | Fondamenta e sicurezza: PWA, design, barra personalizzabile, cifratura, sblocco con Face ID e password, chiave di recupero, backup cifrato, palette | fatta |
-| 2 | Movimenti: import PDF Banca di Piacenza (pdf.js), categorie, aree, regole, swipe, divisione, tag, Home con dati veri | **fatta, da provare** |
-| 3–10 | Vedi il brief | da fare |
+| 2 | Movimenti: import PDF Banca di Piacenza (pdf.js), categorie, aree, regole, swipe, divisione, tag, Home con dati veri | fatta |
+| 3 | BPER, Revolut, CSV universale con modelli, giroconti, contanti, ciambella del patrimonio | fatta |
+| 4 | Abbonamenti (riconoscimento, proposti, avvisi), scadenzario, documenti personali, promemoria estratti conto, avvisi via Comandi Rapidi | **fatta, da provare** |
+| 5–10 | Vedi il brief | da fare |
 
 ## Scelte tecniche
 
@@ -22,6 +24,7 @@ Il brief completo è in `Progetto Finanze Personali – brief per Claude Code.do
   - in memoria resta solo mentre l'app è sbloccata; il blocco ricarica la pagina.
 - **Backup** (`js/backup.js`): un file `.json` cifrato. «Salva backup» lo salva con il foglio di condivisione (iPhone) o con «Salva con nome» (computer). «Aggiorna file» lo unisce: vince la modifica più recente.
 - **Offline**: `sw.js` mette in cache tutti i file dell'app. Quando si pubblica una nuova versione, aumentare `VERSION` in `sw.js` e aggiungere eventuali file nuovi alla lista `ASSETS`.
+- **Avvisi** (`js/reminders.js`): senza server non ci sono notifiche push. L'app apre `shortcuts://run-shortcut?name=Finanze Promemoria&input=text&text=<JSON>` e il Comando Rapido crea l'evento nel Calendario e/o il promemoria. Il JSON contiene solo `titolo` (minimo, senza importi), `data` (`gg/mm/aaaa hh:mm`), `calendario` e `promemoria` (`notifica` | `silenzioso` | `no`), `note`. La guida passo passo è nell'app: Impostazioni › Avvisi e promemoria. In alternativa (impostazione «File calendario») ogni avviso è un file `.ics` con notifica, che può ripetersi da solo (RRULE); va solo nel Calendario, non nei Promemoria.
 - **Sicurezza della pagina**: Content-Security-Policy restrittiva in `index.html` (solo script locali, nessuna connessione esterna per ora). Il testo inserito nelle pagine passa sempre dal template `html``…``, che fa l'escape.
 
 ## Provare sul computer

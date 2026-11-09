@@ -12,11 +12,15 @@ import { placeholderView } from './views/placeholder.js';
 import { settingsView } from './views/settings.js';
 import { movimentiView } from './views/movimenti.js';
 import { contoView } from './views/conto.js';
+import { abbonamentiView } from './views/abbonamenti.js';
+import { scadenzeView } from './views/scadenze.js';
 
 const VIEWS = {
   home: homeView,
   movimenti: movimentiView,
   conto: contoView,
+  abbonamenti: abbonamentiView,
+  scadenze: scadenzeView,
   altro: altroView,
   impostazioni: settingsView,
 };

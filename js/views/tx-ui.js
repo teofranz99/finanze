@@ -9,6 +9,7 @@ import * as M from '../data/model.js';
 import * as S from '../store.js';
 import { readStatement, plan as planImport, commit as commitImport, saveTemplateAndApply } from '../import/importer.js';
 import { applyTemplate, validateMapping } from '../import/template.js';
+import { subForTx } from '../data/subs.js';
 
 // ---------------------------------------------------------------- Formattazione
 export function txIcon(t, big = false) {
@@ -174,7 +175,7 @@ export async function setArea(t, areaId) {
 export function openTxDetail(id) {
   const s = openSheet(html`<div class="tx-detail"></div>`, { className: 'tall' });
   const root = s.el.querySelector('.tx-detail');
-  const off = S.subscribe((col) => { if (col === 'tx' || col === '*') draw(); });
+  const off = S.subscribe((col) => { if (col === 'tx' || col === 'subs' || col === '*') draw(); });
   s.closed.then(off);
 
   function draw() {
@@ -208,6 +209,7 @@ export function openTxDetail(id) {
           <span class="row-label">${t.splits?.length ? 'Modifica la divisione' : 'Dividi tra aree o categorie'}</span>
           <span class="chev">${icon('chevron-right')}</span>
         </button>
+        ${t.cents < 0 ? subRow(t) : ''}
       </div>
       ${t.splits?.length ? html`<div class="split-summary">${t.splits.map((p) => html`
         <div><span>${M.category(p.categoryId).name}${p.areaId ? ` · ${M.area(p.areaId)?.name || ''}` : ''}</span><b>${formatCents(p.cents)}</b></div>`)}</div>` : ''}
@@ -238,6 +240,9 @@ export function openTxDetail(id) {
 
   function wire(t) {
     root.querySelector('[data-act=rename]').onclick = () => renameTx(id);
+    const sb = root.querySelector('[data-act=sub]');
+    // Import al momento del tocco: abbonamenti.js usa a sua volta questo file.
+    if (sb) sb.onclick = async () => { const A = await import('./abbonamenti.js'); A.markTxAsSub(M.tx(id)); };
     root.querySelector('[data-act=cat]').onclick = async () => {
       const c = await pickCategory(t.categoryId);
       if (c) await setCategory(M.tx(id), c);
@@ -280,6 +285,18 @@ export function openTxDetail(id) {
   }
 
   draw();
+}
+
+// Riga «Abbonamento»: porta alla scheda se il movimento è già di un abbonamento,
+// altrimenti permette di crearne uno.
+function subRow(t) {
+  const s = subForTx(t);
+  const known = s && s.status !== 'scartato';
+  return html`<button type="button" class="row" data-act="sub">
+    <span class="row-label">${known ? 'Abbonamento' : 'Questo è un abbonamento'}</span>
+    ${known ? html`<span class="row-detail">${s.name}${s.status === 'chiuso' ? ' (disdetto)' : ''}</span>` : ''}
+    <span class="chev">${icon('chevron-right')}</span>
+  </button>`;
 }
 
 // ---------------------------------------------------------------- Divisione

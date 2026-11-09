@@ -25,7 +25,7 @@ function cleanMerchant(s) {
     .replace(/[\s\-–.,]+$/g, '')
     .replace(/^[\s\-–]+/g, '')
     .replace(/\s+-\s*$/, '')
-    .replace(/\s+(DI|E|DEL|DELLA|DEI|&)$/i, '')   // nomi troncati dalla banca: "TABACCHERIA GLORIA DI"
+    .replace(/\s+(DI|E|DEL|DELLA|DEI|&)$/i, '')   // nomi troncati dalla banca: "BAR CENTRALE DI"
     .trim();
   if (/paypal/i.test(t)) return 'PayPal';
   if (/telecom\s?italia/i.test(t)) return 'TIM';

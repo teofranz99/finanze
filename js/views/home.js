@@ -9,6 +9,7 @@ import * as S from '../store.js';
 import * as DB from '../db.js';
 import { openImport } from './tx-ui.js';
 import { showCategoryThisMonth } from './movimenti.js';
+import { todoItems } from '../data/todo.js';
 
 function donut(slices) {
   const total = slices.reduce((s, x) => s + x.cents, 0);
@@ -57,6 +58,7 @@ export function homeView(el) {
     const maxCat = topCats[0]?.cents || 1;
     const monthName = new Intl.DateTimeFormat('it-IT', { month: 'long' }).format(new Date());
     const lastImport = M.accounts().map((a) => a.lastImportAt || 0).sort((a, b) => b - a)[0];
+    const todo = todoItems();
 
     setHtml(el, page({
       title: 'Home',
@@ -103,6 +105,17 @@ export function homeView(el) {
             })}</ul>` : html`<p class="muted">Ancora nessuna spesa questo mese.</p>`}
           </section>
 
+          ${todo.length ? html`
+            <section class="card list-card todo-card">
+              <div class="card-head"><h2 class="card-title">Da fare</h2><span class="pill warn">${todo.length}</span></div>
+              <div class="list flush">${todo.slice(0, 6).map((x) => html`
+                <a class="tx-mini" href="${x.href}">
+                  <span class="tx-icon" style="background:${x.color}">${icon(x.icon)}</span>
+                  <span class="tx-text"><b>${x.label}</b><span>${x.detail}</span></span>
+                  <span class="chev">${icon('chevron-right')}</span>
+                </a>`)}</div>
+            </section>` : ''}
+
           <section class="card">
             <h2 class="card-title">Previsione di fine mese</h2>
             <p class="muted">Arriva con la fase 5, insieme a budget e uscite fisse.</p>
@@ -131,6 +144,6 @@ export function homeView(el) {
   }
 
   draw();
-  const unsub = S.subscribe((col) => { if (['tx', 'accounts', 'categories', '*'].includes(col)) draw(); });
+  const unsub = S.subscribe((col) => { if (['tx', 'accounts', 'categories', 'subs', 'deadlines', 'settings', '*'].includes(col)) draw(); });
   return () => { off?.(); unsub(); };
 }
