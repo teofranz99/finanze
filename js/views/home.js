@@ -1,6 +1,6 @@
 // Home: spendibile, patrimonio totale (ciambella per conto), il mese in corso.
 
-import { html, setHtml, animateNumber, relativeTime } from '../util.js';
+import { html, setHtml, animateNumber, relativeTime, reducedMotion } from '../util.js';
 import { icon } from '../ui/icons.js';
 import { page, enhancePage } from '../ui/page.js';
 import { formatCents, isoToday } from '../money.js';
@@ -71,19 +71,7 @@ export function homeView(el) {
     const fc = hasData ? P.forecast() : null;
     const budgets = B.status().slice(0, 4);
 
-    const curStart = `${isoToday().slice(0, 7)}-01`;
-    const firstTx = M.txs().reduce((m, t) => (t.date < m ? t.date : m), curStart);
-    const minOffset = -((Number(curStart.slice(0, 4)) - Number(firstTx.slice(0, 4))) * 12 + Number(curStart.slice(5, 7)) - Number(firstTx.slice(5, 7)));
-    monthOffset = Math.max(minOffset, Math.min(0, monthOffset));
-    const monthStart = addMonths(curStart, monthOffset);
-    const monthLast = monthEnd(monthStart);
-    const monthTx = M.txs().filter((t) => t.date >= monthStart && t.date <= monthLast);
-    const tot = M.totals(monthTx);
-    const topCats = M.byCategory(monthTx).slice(0, 5);
-    const maxCat = topCats[0]?.cents || 1;
-    const monthName = monthOffset === 0
-      ? new Intl.DateTimeFormat('it-IT', { month: 'long' }).format(new Date())
-      : (monthStart.slice(0, 4) === curStart.slice(0, 4) ? new Intl.DateTimeFormat('it-IT', { month: 'long' }).format(new Date(`${monthStart}T12:00:00`)) : fmtMonth(monthStart));
+    const mo = monthData();
     const lastImport = M.accounts().map((a) => a.lastImportAt || 0).sort((a, b) => b - a)[0];
     const todo = todoItems();
 
@@ -115,26 +103,13 @@ export function homeView(el) {
               : html`<p class="muted center">I conti compariranno qui dopo il primo import.</p>`}
           </section>
 
-          <section class="card month-card">
+          <section class="card month-card" data-month-card>
             <div class="month-switch">
-              <button type="button" class="month-nav" data-month="-1" aria-label="Mese precedente" ${monthOffset <= minOffset ? 'disabled' : ''}>${icon('chevron-left')}</button>
-              <h2 class="card-title">${monthName.charAt(0).toUpperCase() + monthName.slice(1)}</h2>
-              <button type="button" class="month-nav" data-month="1" aria-label="Mese successivo" ${monthOffset >= 0 ? 'disabled' : ''}>${icon('chevron-right')}</button>
+              <button type="button" class="month-nav" data-month="-1" aria-label="Mese precedente" ${mo.offset <= mo.min ? 'disabled' : ''}>${icon('chevron-left')}</button>
+              <h2 class="card-title" data-month-title>${mo.title}</h2>
+              <button type="button" class="month-nav" data-month="1" aria-label="Mese successivo" ${mo.offset >= 0 ? 'disabled' : ''}>${icon('chevron-right')}</button>
             </div>
-            <div class="month-totals">
-              <div><span>Entrate</span><b class="positive">${formatCents(tot.income)}</b></div>
-              <div><span>Uscite</span><b>${formatCents(tot.expense)}</b></div>
-            </div>
-            ${tot.extraordinary ? html`<p class="extra-note">${icon('sparkles')}Spese straordinarie a parte: <b>${formatCents(tot.extraordinary)}</b></p>` : ''}
-            ${topCats.length ? html`<ul class="cat-bars">${topCats.map((c) => {
-              const cat = M.category(c.id);
-              return html`<li>
-                <a href="#/movimenti" data-cat="${c.id}">
-                  <span class="cb-icon" style="background:${cat.color}">${icon(cat.icon)}</span>
-                  <span class="cb-body"><span class="cb-top"><span>${cat.name}</span><b>${formatCents(c.cents)}</b></span>
-                  <span class="cb-bar"><i style="width:${Math.max(4, (c.cents / maxCat) * 100)}%;background:${cat.color}"></i></span></span>
-                </a></li>`;
-            })}</ul>` : html`<p class="muted">Ancora nessuna spesa questo mese.</p>`}
+            <div class="month-body">${monthPane(mo)}</div>
           </section>
 
           ${todo.length ? html`
@@ -172,12 +147,7 @@ export function homeView(el) {
     const ft = el.querySelector('[data-funds-toggle]');
     if (ft) ft.onchange = () => P.updatePlanSettings({ fundsInTotal: ft.checked });
     el.querySelector('[data-import]').onclick = openImport;
-    el.querySelectorAll('[data-month]').forEach((b) => {
-      b.onclick = () => { monthOffset += Number(b.dataset.month); const y = window.scrollY; draw(); window.scrollTo(0, y); };
-    });
-    el.querySelectorAll('[data-cat]').forEach((a) => {
-      a.onclick = (e) => { e.preventDefault(); showCategoryInMonth(a.dataset.cat, monthStart.slice(0, 7)); };
-    });
+    wireMonthCard(el.querySelector('[data-month-card]'));
     DB.metaGet('lastBackupAt').then((ts) => {
       const span = el.querySelector('[data-sync]');
       if (span) span.textContent = ts ? `Ultimo backup ${relativeTime(ts)}` : 'Nessun backup salvato';
@@ -246,4 +216,132 @@ function forecastCard(fc) {
       </div>
       ${stale ? html`<p class="muted small">Saldi aggiornati all'ultimo import: ${new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'long' }).format(fc.asOf)}.</p>` : ''}
     </section>`;
+}
+
+// ---------------------------------------------------------------- Scheda del mese
+function monthData() {
+  const curStart = `${isoToday().slice(0, 7)}-01`;
+  const firstTx = M.txs().reduce((m, t) => (t.date < m ? t.date : m), curStart);
+  const min = -((Number(curStart.slice(0, 4)) - Number(firstTx.slice(0, 4))) * 12 + Number(curStart.slice(5, 7)) - Number(firstTx.slice(5, 7)));
+  monthOffset = Math.max(min, Math.min(0, monthOffset));
+  const start = addMonths(curStart, monthOffset);
+  const last = monthEnd(start);
+  const list = M.txs().filter((t) => t.date >= start && t.date <= last);
+  const name = start.slice(0, 4) === curStart.slice(0, 4)
+    ? new Intl.DateTimeFormat('it-IT', { month: 'long' }).format(new Date(`${start}T12:00:00`))
+    : fmtMonth(start);
+  return {
+    offset: monthOffset,
+    min,
+    start,
+    title: name.charAt(0).toUpperCase() + name.slice(1),
+    tot: M.totals(list),
+    cats: M.byCategory(list).slice(0, 5),
+  };
+}
+
+function monthPane(mo) {
+  const maxCat = mo.cats[0]?.cents || 1;
+  return html`<div class="month-pane">
+    <div class="month-totals">
+      <div><span>Entrate</span><b class="positive" data-mt="income">${formatCents(mo.tot.income)}</b></div>
+      <div><span>Uscite</span><b data-mt="expense">${formatCents(mo.tot.expense)}</b></div>
+    </div>
+    ${mo.tot.extraordinary ? html`<p class="extra-note">${icon('sparkles')}Spese straordinarie a parte: <b>${formatCents(mo.tot.extraordinary)}</b></p>` : ''}
+    ${mo.cats.length ? html`<ul class="cat-bars">${mo.cats.map((c) => {
+      const cat = M.category(c.id);
+      return html`<li>
+        <a href="#/movimenti" data-cat="${c.id}">
+          <span class="cb-icon" style="background:${cat.color}">${icon(cat.icon)}</span>
+          <span class="cb-body"><span class="cb-top"><span>${cat.name}</span><b>${formatCents(c.cents)}</b></span>
+          <span class="cb-bar"><i style="width:${Math.max(4, (c.cents / maxCat) * 100)}%;background:${cat.color}"></i></span></span>
+        </a></li>`;
+    })}</ul>` : html`<p class="muted">Nessuna spesa ${mo.offset === 0 ? 'questo mese' : 'in questo mese'}.</p>`}
+  </div>`;
+}
+
+const EASE = 'cubic-bezier(0.32, 0.72, 0, 1)';
+
+// Cambio mese: cambia solo questa scheda. Il contenuto scorre di lato nella direzione
+// scelta, l'altezza si adatta e le cifre scorrono dal valore di prima.
+function wireMonthCard(card) {
+  if (!card) return;
+  const body = card.querySelector('.month-body');
+  const title = card.querySelector('[data-month-title]');
+  const prevBtn = card.querySelector('[data-month="-1"]');
+  const nextBtn = card.querySelector('[data-month="1"]');
+  let busy = false;
+
+  const wireCats = () => {
+    const start = monthData().start;
+    body.querySelectorAll('[data-cat]').forEach((a) => {
+      a.onclick = (e) => { e.preventDefault(); showCategoryInMonth(a.dataset.cat, start.slice(0, 7)); };
+    });
+  };
+
+  async function go(dir) {
+    const before = monthData();
+    if (busy || (dir < 0 && before.offset <= before.min) || (dir > 0 && before.offset >= 0)) return;
+    busy = true;
+    monthOffset += dir;
+    const mo = monthData();
+    prevBtn.disabled = mo.offset <= mo.min;
+    nextBtn.disabled = mo.offset >= 0;
+
+    const oldPane = body.firstElementChild;
+    const h0 = body.offsetHeight;
+    const tmp = document.createElement('div');
+    tmp.innerHTML = String(monthPane(mo));
+    const newPane = tmp.firstElementChild;
+
+    if (reducedMotion()) {
+      title.textContent = mo.title;
+      oldPane.replaceWith(newPane);
+      wireCats();
+      busy = false;
+      return;
+    }
+
+    // Il vecchio contenuto resta sopra, fermo in alto, mentre esce.
+    oldPane.style.cssText = 'position:absolute;top:0;left:0;right:0;';
+    body.style.position = 'relative';
+    body.appendChild(newPane);
+    const h1 = newPane.offsetHeight;
+    const dx = dir > 0 ? 1 : -1;
+    const opts = { duration: 380, easing: EASE };
+    const anims = [
+      body.animate([{ height: `${h0}px` }, { height: `${h1}px` }], opts),
+      oldPane.animate([{ transform: 'translateX(0)', opacity: 1 }, { transform: `translateX(${-dx * 28}%)`, opacity: 0 }], { ...opts, fill: 'forwards' }),
+      newPane.animate([{ transform: `translateX(${dx * 28}%)`, opacity: 0 }, { transform: 'translateX(0)', opacity: 1 }], opts),
+      title.animate([{ opacity: 1, transform: 'translateX(0)' }, { opacity: 0, transform: `translateX(${-dx * 12}px)` }], { duration: 140, easing: 'ease-in', fill: 'forwards' }),
+    ];
+    anims[3].finished.then(() => {
+      title.textContent = mo.title;
+      title.animate([{ opacity: 0, transform: `translateX(${dx * 12}px)` }, { opacity: 1, transform: 'translateX(0)' }], { duration: 220, easing: EASE, fill: 'forwards' });
+    });
+    // Entrate e uscite scorrono dal valore del mese di prima.
+    animateNumber(newPane.querySelector('[data-mt=income]'), mo.tot.income / 100, { from: before.tot.income / 100, duration: 450 });
+    animateNumber(newPane.querySelector('[data-mt=expense]'), mo.tot.expense / 100, { from: before.tot.expense / 100, duration: 450 });
+    wireCats();
+    await Promise.all(anims.slice(0, 3).map((a) => a.finished.catch(() => {})));
+    oldPane.remove();
+    body.style.position = '';
+    busy = false;
+  }
+
+  prevBtn.onclick = () => go(-1);
+  nextBtn.onclick = () => go(1);
+  wireCats();
+
+  // Scorrendo il dito sulla scheda, come tra le pagine: verso sinistra il mese dopo.
+  let sx = null;
+  let sy = 0;
+  body.addEventListener('touchstart', (e) => { sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, { passive: true });
+  body.addEventListener('touchend', (e) => {
+    if (sx == null) return;
+    const dx = e.changedTouches[0].clientX - sx;
+    const dy = e.changedTouches[0].clientY - sy;
+    sx = null;
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) go(dx < 0 ? 1 : -1);
+  }, { passive: true });
 }

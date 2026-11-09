@@ -1388,6 +1388,8 @@ button.hero-card:active { transform: scale(0.99); }
 
 .month-switch { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
 .month-switch .card-title { margin: 0; flex: 1; text-align: center; }
+.month-body { overflow: hidden; margin: 0 -20px; padding: 0 20px; touch-action: pan-y; }
+.month-pane .cat-bars { margin-bottom: 0; }
 .month-nav { appearance: none; border: 0; background: var(--fill); color: var(--tint); width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; cursor: pointer; flex: none; }
 .month-nav .icon { width: 18px; height: 18px; stroke-width: 2.4; }
 .month-nav:disabled { color: var(--label3); background: none; cursor: default; }
