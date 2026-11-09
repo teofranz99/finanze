@@ -1218,16 +1218,12 @@ button.next-card { appearance: none; border: 0; width: 100%; text-align: left; f
 .date-inline, .time-inline, .name-inline { width: auto; max-width: 55%; text-align: right; color: var(--label2); padding: 10px 0; font-size: 16px; }
 .name-inline { min-width: 0; flex: 1; }
 .row.prose ol { margin: 0; padding-left: 20px; display: grid; gap: 8px; }
-.guide-steps { gap: 12px !important; }
-.guide-steps li::marker { font-weight: 700; color: var(--tint); }
 .row.prose p + p, .row.prose ol + p { margin-top: 8px; }
 .row.prose code { font-family: var(--mono); font-size: 14px; background: var(--fill); padding: 1px 5px; border-radius: 5px; }
 .row.tinted .row-label { color: var(--tint); }
 .row-detail .icon { width: 20px; height: 20px; }
 .todo-card .card-head { align-items: center; }
 .import-plan .btn .icon { width: 18px; height: 18px; }
-.seg-wrap .segmented { display: flex; width: 100%; }
-.seg-wrap .segmented button { flex: 1; }
 
 /* ------------------------------------------------------------ Fogli modali */
 .sheet-layer { position: fixed; inset: 0; z-index: 200; }
@@ -1302,6 +1298,93 @@ button.next-card { appearance: none; border: 0; width: 100%; text-align: left; f
 
 /* Copertura quando l'app va in background (anteprima del multitasking). */
 .app-hidden .shell { visibility: hidden; }
+
+/* ------------------------------------------------------------ Fase 5: fondi, spese divise, budget, previsione */
+button.hero-card { appearance: none; border: 0; width: 100%; text-align: left; font: inherit; cursor: pointer; }
+button.hero-card:active { transform: scale(0.99); }
+.hero-label { display: flex; align-items: center; gap: 6px; }
+.hero-info { width: 16px; height: 16px; opacity: 0.75; }
+
+.tx-text .cb-bar { margin-top: 5px; }
+.tx-mini.wrap .tx-text span { white-space: normal; }
+.cb-bar.big { height: 8px; border-radius: 4px; margin: 0 4px 6px; }
+.cb-bar.big i { border-radius: 4px; }
+.tx-amount.negative small, .tx-amount.positive small { color: var(--label2); }
+.tx-icon.avatar { background: color-mix(in srgb, var(--tint) 18%, var(--fill)); color: var(--tint); font-weight: 700; font-size: 16px; }
+.tx-icon.avatar.big { font-size: 26px; }
+.txd-merchant.static { cursor: default; }
+.txd-merchant.static:active { background: none; }
+
+.warn-note { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--red); margin: 6px 0 4px; }
+.warn-note .icon { width: 16px; height: 16px; flex: none; }
+
+.stat-grid.three { grid-template-columns: repeat(3, 1fr); margin: 0 4px 8px; text-align: center; }
+.stat-grid.three b { font-size: 17px; }
+
+.ledger-row .clip { color: var(--label3); display: flex; }
+.ledger-row .clip .icon { width: 16px; height: 16px; }
+
+.mini-title { font-size: 13px; font-weight: 600; color: var(--label2); text-transform: uppercase; letter-spacing: 0.02em; margin: 14px 0 2px; }
+.list-card > .btn.plain { width: 100%; justify-content: center; margin-top: 2px; }
+.list-card > .muted.small { margin: 2px 0 6px; }
+
+.budget-link { display: flex; align-items: center; gap: 12px; margin: 0 16px 12px; padding: 12px 16px; }
+.budget-link .chev { color: var(--label3); display: flex; }
+.budget-link .chev .icon { width: 16px; height: 16px; }
+.budget-link:active { transform: scale(0.99); }
+@media (min-width: 768px) { .budget-link { max-width: 720px; margin-left: auto; margin-right: auto; } }
+
+.budget-card .card-head .chev { color: var(--label3); display: flex; }
+.budget-card .card-head .chev .icon { width: 16px; height: 16px; }
+.budget-mini { list-style: none; margin: 4px 0 6px; padding: 0; display: grid; gap: 12px; }
+.bm-top { display: flex; justify-content: space-between; gap: 10px; font-size: 15px; margin-bottom: 5px; }
+.bm-top b { font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.bm-top small { font-weight: 400; color: var(--label2); font-size: 13px; }
+
+.inline-toggle { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 15px; color: var(--label2); margin-top: 6px; padding-top: 10px; border-top: 0.5px solid var(--sep); }
+
+.forecast-card .fc-amount { font-size: 34px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.calc { display: grid; gap: 8px; margin: 12px 0 4px; }
+.calc > div { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.calc span { color: var(--label2); font-size: 15px; display: grid; }
+.calc span small { font-size: 12px; color: var(--label3); }
+.calc b { font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
+.calc .total { border-top: 0.5px solid var(--sep); padding-top: 8px; }
+.calc .total span { color: var(--label); font-weight: 600; }
+.calc .total b { font-size: 18px; }
+.calc.small span { font-size: 14px; }
+.spendable-sheet .calc { margin: 6px 0 14px; }
+.spendable-sheet .list { margin-bottom: 4px; }
+
+.tx-pick .search-bar { margin: 0 0 8px; }
+.flush-sheet { background: var(--bg-elev); border-radius: var(--radius); overflow: hidden; }
+
+.share-person .field { flex: 1; min-width: 0; }
+.share-person .field.money { flex: 0 0 120px; }
+.share-amount { flex: none; font-variant-numeric: tabular-nums; min-width: 84px; text-align: right; }
+.ok-note { display: flex; align-items: center; gap: 4px; color: var(--green); font-size: 13px; }
+.ok-note .icon { width: 14px; height: 14px; }
+
+.owe-row { flex-wrap: wrap; row-gap: 8px; }
+.owe-actions { display: flex; flex-wrap: wrap; gap: 6px; width: 100%; }
+.owe-actions .btn { flex: 1 1 auto; }
+.link-title { appearance: none; border: 0; background: none; font: inherit; display: flex; align-items: center; gap: 4px; cursor: pointer; width: 100%; text-align: left; }
+.link-title .icon { width: 14px; height: 14px; transition: transform 0.25s var(--ease); }
+.link-title .icon.open { transform: rotate(90deg); }
+
+/* Rendiconto dei fondi */
+@media print {
+  .print-root.report { padding: 24px; }
+  .print-root.report table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 16px; }
+  .print-root.report th, .print-root.report td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #ccc; }
+  .print-root.report .num { text-align: right; white-space: nowrap; }
+  .print-root.report tfoot td { border-bottom: 0; padding-top: 4px; }
+  .print-root.report tfoot tr.total td { font-weight: 700; border-top: 2px solid #000; }
+  .print-root.report .small { font-size: 11px; color: #555; }
+  .print-root.report .receipt { break-before: page; }
+  .print-root.report .receipt h2 { font-size: 14px; margin-bottom: 10px; }
+  .print-root.report .receipt img { max-width: 100%; max-height: 24cm; object-fit: contain; }
+}
 
 /* ------------------------------------------------------------ Stampa della chiave di recupero */
 .print-root { display: none; }

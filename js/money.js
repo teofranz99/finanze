@@ -35,3 +35,13 @@ export const CURRENCY_NUM = {
   840: 'USD', 826: 'GBP', 756: 'CHF', 978: 'EUR', 392: 'JPY', 124: 'CAD', 36: 'AUD',
   752: 'SEK', 578: 'NOK', 208: 'DKK', 985: 'PLN', 203: 'CZK', 348: 'HUF', 949: 'TRY', 156: 'CNY',
 };
+
+// Campo importo scritto dall'utente ("1.234,50", "12.5", "€ 30") → centesimi positivi, o null.
+export function parseEuro(v) {
+  const t = String(v ?? '').trim().replace(/\s|€/g, '').replace(/\.(?=\d{3}(\D|$))/g, '').replace(',', '.');
+  if (!t) return null;
+  const n = Number(t);
+  return Number.isFinite(n) && n > 0 ? Math.round(n * 100) : null;
+}
+// Centesimi → valore per un campo importo ("12,50"); vuoto se zero.
+export const euroValue = (c) => (c ? (Math.abs(c) / 100).toFixed(2).replace('.', ',') : '');

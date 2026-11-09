@@ -1,10 +1,14 @@
 // Le cose da fare adesso, per la Home: avvisi degli abbonamenti, addebiti dopo una disdetta,
-// scadenze nel periodo di preavviso, estratti conto da caricare.
+// scadenze nel periodo di preavviso, estratti conto da caricare, fondi quasi finiti,
+// soldi non miei usati per spese mie, budget vicini al limite.
 
 import * as Sub from './subs.js';
 import * as D from './deadlines.js';
 import { alertSettings } from '../reminders.js';
 import { relDays } from '../dates.js';
+import * as F from './funds.js';
+import * as B from './budgets.js';
+import { formatCents } from '../money.js';
 
 export function todoItems() {
   const out = [];
@@ -23,6 +27,15 @@ export function todoItems() {
   const every = alertSettings().importEvery;
   for (const a of D.importAccounts()) {
     if (D.importState(a, every).late) out.push({ href: '#/scadenze', icon: 'upload', color: 'var(--s5)', label: a.name, detail: 'Estratto conto da caricare' });
+  }
+  for (const x of F.overdrawn()) {
+    out.push({ href: '#/fondi', icon: 'info', color: 'var(--red)', label: x.account.name, detail: `Stai usando ${formatCents(-x.mine)} non tuoi` });
+  }
+  for (const { f, b } of F.lowFunds()) {
+    out.push({ href: '#/fondi', icon: 'briefcase', color: 'var(--orange)', label: f.name, detail: b.remaining > 0 ? `Il fondo sta per finire: restano ${formatCents(b.remaining)}` : 'Il fondo è finito' });
+  }
+  for (const x of B.alerts()) {
+    out.push({ href: '#/movimenti/budget', icon: x.t.icon, color: x.over ? 'var(--red)' : 'var(--orange)', label: `Budget ${x.t.name}`, detail: x.over ? `Superato di ${formatCents(-x.left)}` : `Al ${Math.round(x.pct * 100)}%: restano ${formatCents(x.left)}` });
   }
   return out;
 }

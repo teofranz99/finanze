@@ -12,6 +12,8 @@ import {
   txIcon, amountClass, dayLabel, subtitle, pickCategory, pickArea, setCategory, setArea,
   openTxDetail, openManualAdd, openImport, gridPicker, categoryGroups, areaItems, NO_AREA,
 } from './tx-ui.js';
+import { budgetView } from './budget.js';
+import * as B from '../data/budgets.js';
 
 const PERIODS = [
   ['month', 'Questo mese'],
@@ -66,7 +68,8 @@ export function filtered() {
   }).sort((a, b) => (b.date.localeCompare(a.date)) || ((b.seq || 0) - (a.seq || 0)));
 }
 
-export function movimentiView(el) {
+export function movimentiView(el, rest = []) {
+  if (rest[0] === 'budget') return budgetView(el);
   let selectMode = false;
   const selected = new Set();
   let limit = PAGE;
@@ -135,6 +138,8 @@ export function movimentiView(el) {
           ${tot.extraordinary ? html`<p class="extra-note">${icon('sparkles')}Spese straordinarie a parte: <b>${formatCents(tot.extraordinary)}</b></p>` : ''}
         </div>
 
+        ${budgetLink()}
+
         ${ncCount ? html`<button type="button" class="nc-banner" data-nc>${icon('question')}<span><b>${ncCount} da classificare</b> · scorri un movimento verso sinistra per scegliere la categoria</span></button>` : ''}
 
         ${list.length ? html`
@@ -155,6 +160,18 @@ export function movimentiView(el) {
     }));
     off = enhancePage(el);
     wire();
+  }
+
+  // Riga verso Budget e accantonamenti, con lo stato dei budget del mese.
+  function budgetLink() {
+    const st = B.status();
+    const over = st.filter((x) => x.over).length;
+    const warn = st.filter((x) => x.warn).length;
+    const detail = !st.length ? 'Limiti al mese e accantonamenti' : over ? `${over} ${over === 1 ? 'budget superato' : 'budget superati'}` : warn ? `${warn} vicino al limite` : `${st.length} nei limiti`;
+    return html`<a class="budget-link card" href="#/movimenti/budget">
+      <span class="tx-icon" style="background:${over ? 'var(--red)' : warn ? 'var(--orange)' : 'var(--s2)'}">${icon('chart')}</span>
+      <span class="tx-text"><b>Budget</b><span>${detail}</span></span>
+      <span class="chev">${icon('chevron-right')}</span></a>`;
   }
 
   function txRow(t) {
@@ -338,7 +355,7 @@ export function movimentiView(el) {
 
   draw();
   const unsub = S.subscribe((col) => {
-    if (['tx', 'accounts', 'categories', 'areas', 'rules', '*'].includes(col)) {
+    if (['tx', 'accounts', 'categories', 'areas', 'rules', 'budgets', 'funds', '*'].includes(col)) {
       const y = window.scrollY;
       draw();
       window.scrollTo(0, y);

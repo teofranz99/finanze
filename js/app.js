@@ -14,6 +14,7 @@ import { movimentiView } from './views/movimenti.js';
 import { contoView } from './views/conto.js';
 import { abbonamentiView } from './views/abbonamenti.js';
 import { scadenzeView } from './views/scadenze.js';
+import { fondiView } from './views/fondi.js';
 
 const VIEWS = {
   home: homeView,
@@ -21,6 +22,7 @@ const VIEWS = {
   conto: contoView,
   abbonamenti: abbonamentiView,
   scadenze: scadenzeView,
+  fondi: fondiView,
   altro: altroView,
   impostazioni: settingsView,
 };

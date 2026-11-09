@@ -24,6 +24,14 @@ export function addMonths(iso, n) {
   return toIso(t);
 }
 
+// Mesi di calendario tra due date (gen → mar = 2), senza guardare il giorno.
+export function monthsBetween(a, b) {
+  const [ya, ma] = String(a).split('-').map(Number);
+  const [yb, mb] = String(b).split('-').map(Number);
+  return (yb - ya) * 12 + (mb - ma);
+}
+export const monthEnd = (iso) => addDays(addMonths(`${String(iso).slice(0, 7)}-01`, 1), -1);
+
 export const daysBetween = (a, b) => Math.round((fromIso(b) - fromIso(a)) / 86400000);
 export const maxIso = (...xs) => xs.filter(Boolean).sort().pop() || null;
 

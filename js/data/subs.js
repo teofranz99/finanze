@@ -310,7 +310,7 @@ export function newSub(p) {
     trial: !!p.trial,
     closedAt: null,
     ackTxIds: [],
-    alert: { on: false, daysBefore: 3, mode: null, scheduledFor: null, handledFor: null, snooze: null },
+    alert: { on: false, daysBefore: 3, scheduledFor: null, handledFor: null, snooze: null },
     source: p.source || 'manuale',
     createdAt: Date.now(),
   };

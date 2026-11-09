@@ -81,15 +81,32 @@ export function parts(t) {
   return [{ cents: t.cents, categoryId: t.categoryId, areaId: t.areaId }];
 }
 
+// La parte «mia» di un movimento. Niente per i soldi di un fondo vincolato (non sono miei)
+// e per i rimborsi di una spesa divisa; di una spesa divisa con altre persone, solo la mia quota.
+export function myParts(t) {
+  if (t.fundId || t.repays?.length) return [];
+  const ps = parts(t);
+  const total = Math.abs(t.cents);
+  if (!t.share?.people?.length || !total) return ps;
+  const mine = Math.max(0, Math.min(total, Math.abs(t.share.mine ?? total)));
+  let acc = 0;
+  return ps.map((p, i) => {
+    const c = i === ps.length - 1 ? Math.sign(t.cents) * mine - acc : Math.round((p.cents * mine) / total);
+    acc += c;
+    return { ...p, cents: c };
+  });
+}
+
 // Entrate e uscite: giroconti e investimenti non contano. Un rimborso in una categoria di spesa
 // riduce le uscite.
 // Le spese straordinarie sono a parte: non entrano nelle uscite del periodo.
+// Contano solo le parti mie (vedi myParts).
 export function totals(list) {
   let income = 0;
   let expense = 0;
   let extraordinary = 0;
   for (const t of list) {
-    for (const p of parts(t)) {
+    for (const p of myParts(t)) {
       const k = kindOf({ ...t, categoryId: p.categoryId, cents: p.cents });
       if (k === 'entrata') income += p.cents;
       else if (k === 'spesa') expense -= p.cents;
@@ -102,7 +119,7 @@ export function totals(list) {
 export function byCategory(list) {
   const map = new Map();
   for (const t of list) {
-    for (const p of parts(t)) {
+    for (const p of myParts(t)) {
       if (kindOf({ ...t, categoryId: p.categoryId, cents: p.cents }) !== 'spesa') continue;
       map.set(p.categoryId, (map.get(p.categoryId) || 0) - p.cents);
     }

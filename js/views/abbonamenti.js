@@ -12,7 +12,7 @@ import * as Sub from '../data/subs.js';
 import * as S from '../store.js';
 import * as R from '../reminders.js';
 import { today, addDays, relDays, fmtShort, fmtLong } from '../dates.js';
-import { schedule, laterPicker, modeOptions, usesIcs } from './avvisi.js';
+import { schedule, laterPicker } from './avvisi.js';
 
 const REASON = { noto: 'servizio noto', ricorrente: 'pagamento ricorrente', categoria: 'categoria Abbonamenti' };
 
@@ -194,7 +194,7 @@ export async function scheduleAlert(s) {
   const st = Sub.alertState(s);
   if (!st) return;
   const date = st.snoozed || st.alertDate;
-  const res = await schedule({ title: alertTitle(s), date, mode: s.alert.mode, repeat: st.snoozed ? null : subRepeat(s) });
+  const res = await schedule({ title: alertTitle(s), date, repeat: st.snoozed ? null : subRepeat(s) });
   if (!res) return;
   const cur = Sub.sub(s.id);
   await Sub.save({ ...cur, alert: { ...cur.alert, scheduledFor: st.snoozed ? `${st.next}@${st.snoozed}` : st.next, recurring: cur.alert.recurring || res.recurring } });
@@ -217,7 +217,7 @@ export async function proceed(s) {
   if (again && alert.recurring) { toast('L\'evento nel Calendario si ripete già da solo'); return; }
   if (again) {
     const date = addDays(following, -(alert.daysBefore ?? 3));
-    const res = await schedule({ title: R.titleFor('Rinnovo abbonamento', s.name), date, mode: alert.mode, repeat: subRepeat({ ...s, trial: false }) });
+    const res = await schedule({ title: R.titleFor('Rinnovo abbonamento', s.name), date, repeat: subRepeat({ ...s, trial: false }) });
     if (res) await Sub.save({ ...Sub.sub(s.id), alert: { ...alert, scheduledFor: following, recurring: res.recurring } });
   } else toast('Avvisi spenti per questo abbonamento');
 }
@@ -229,7 +229,7 @@ export async function later(s) {
   if (!until) return;
   const cur = Sub.sub(s.id);
   await Sub.save({ ...cur, alert: { ...cur.alert, snooze: { for: st.next, until } } });
-  const ok = await schedule({ title: alertTitle(s), date: until, mode: cur.alert.mode });
+  const ok = await schedule({ title: alertTitle(s), date: until });
   if (ok) {
     const c2 = Sub.sub(s.id);
     await Sub.save({ ...c2, alert: { ...c2.alert, scheduledFor: `${st.next}@${until}` } });
@@ -291,9 +291,8 @@ export function openSubDetail(id) {
           ${a.on ? html`
             <div class="row static"><span class="row-label">Giorni di anticipo</span>
               <span class="stepper"><button type="button" data-days="-1" ${a.daysBefore <= 0 ? 'disabled' : ''}>−</button><span>${a.daysBefore ?? 3}</span><button type="button" data-days="1">+</button></span></div>
-            ${usesIcs() ? '' : html`<label class="row"><span class="row-label">Dove</span><span class="select-wrap"><select data-mode>${modeOptions().map(([v, l]) => html`<option value="${v}" ${(a.mode || '') === v ? 'selected' : ''}>${l}</option>`)}</select>${icon('chevron-right', 'select-chev')}</span></label>`}
             ${st ? html`<button type="button" class="row tinted" data-schedule>
-              <span class="row-label">${st.scheduled ? 'Crea di nuovo l\'avviso' : usesIcs() ? 'Aggiungi l\'avviso al Calendario' : 'Crea l\'avviso con Comandi Rapidi'}<small>${st.snoozed ? `Rimandato al ${fmtShort(st.snoozed)}` : `Avviso il ${fmtShort(st.alertDate < today() ? today() : st.alertDate)}`}${st.scheduled ? (s.alert.recurring ? ' · si ripete nel Calendario' : ' · già creato') : ' · non ancora creato'}</small></span>
+              <span class="row-label">${st.scheduled ? 'Aggiungi di nuovo l\'avviso' : 'Aggiungi l\'avviso al Calendario'}<small>${st.snoozed ? `Rimandato al ${fmtShort(st.snoozed)}` : `Avviso il ${fmtShort(st.alertDate < today() ? today() : st.alertDate)}`}${st.scheduled ? (s.alert.recurring ? ' · si ripete nel Calendario' : ' · già creato') : ' · non ancora creato'}</small></span>
               <span class="row-detail ${st.scheduled ? 'ok' : 'ko'}">${st.scheduled ? icon('check') : icon('calendar')}</span>
             </button>` : ''}` : ''}
         </div>
@@ -332,8 +331,6 @@ export function openSubDetail(id) {
         await Sub.save({ ...cur, alert: { ...cur.alert, daysBefore: d, scheduledFor: null, recurring: false } });
       };
     });
-    const md = root.querySelector('[data-mode]');
-    if (md) md.onchange = async () => { const cur = Sub.sub(id); await Sub.save({ ...cur, alert: { ...cur.alert, mode: md.value || null } }); };
     const sc = root.querySelector('[data-schedule]');
     if (sc) sc.onclick = () => scheduleAlert(Sub.sub(id));
     const stop = root.querySelector('[data-stop]');

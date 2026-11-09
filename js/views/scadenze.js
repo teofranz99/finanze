@@ -12,7 +12,7 @@ import * as Sub from '../data/subs.js';
 import * as S from '../store.js';
 import * as R from '../reminders.js';
 import { today, addDays, relDays, fmtShort, fmtLong, fmtMonth, toIso } from '../dates.js';
-import { schedule, laterPicker, modeOptions, usesIcs } from './avvisi.js';
+import { schedule, laterPicker } from './avvisi.js';
 import { gridPicker, openImport } from './tx-ui.js';
 import { openSubDetail } from './abbonamenti.js';
 
@@ -189,7 +189,7 @@ const dlTitle = (d) => R.titleFor(D.meta(d).cal, d.kind === 'documento' ? D.meta
 // Con il file calendario una scadenza che si ripete (es. il bollo ogni anno) diventa un evento ricorrente.
 async function scheduleDeadline(d, date = null) {
   const repeat = date ? null : R.repeatFromMonths(d.repeatMonths);
-  const res = await schedule({ title: dlTitle(d), date: date || D.remindDate(d), mode: d.mode, repeat });
+  const res = await schedule({ title: dlTitle(d), date: date || D.remindDate(d), repeat });
   if (res && !date) await D.save({ ...D.get(d.id), reminder: { scheduledFor: d.date, recurring: res.recurring } });
   return res;
 }
@@ -248,11 +248,10 @@ function openDeadline(d, isNew = false) {
         <label class="field field-row"><span>Scadenza</span><input class="text" type="date" name="date" value="${d.date || ''}" required></label>
         <label class="field field-row"><span>Avvisami</span><select name="lead">${leads.map(([v, l]) => html`<option value="${v}" ${v === d.leadDays ? 'selected' : ''}>${l}</option>`)}</select></label>
         ${isDoc ? '' : html`<label class="field field-row"><span>Si ripete</span><select name="repeat">${D.REPEATS.map(([v, l]) => html`<option value="${v}" ${v === d.repeatMonths ? 'selected' : ''}>${l}</option>`)}</select></label>`}
-        ${usesIcs() ? '' : html`<label class="field field-row"><span>Dove</span><select name="mode">${modeOptions().map(([v, l]) => html`<option value="${v}" ${(d.mode || '') === v ? 'selected' : ''}>${l}</option>`)}</select></label>`}
       </div>
       ${isDoc ? '' : html`<label class="field"><textarea class="text note-text" name="note" rows="2" placeholder="Nota (facoltativa)">${d.note || ''}</textarea></label>`}
       ${st ? html`<div class="list"><button type="button" class="row tinted" data-schedule>
-        <span class="row-label">${st.scheduled ? 'Crea di nuovo l\'avviso' : usesIcs() ? 'Aggiungi l\'avviso al Calendario' : 'Crea l\'avviso con Comandi Rapidi'}<small>Avviso il ${fmtShort(D.remindDate(d))}${st.scheduled ? ' · già creato' : ' · non ancora creato'}</small></span>
+        <span class="row-label">${st.scheduled ? 'Aggiungi di nuovo l\'avviso' : 'Aggiungi l\'avviso al Calendario'}<small>Avviso il ${fmtShort(D.remindDate(d))}${st.scheduled ? ' · già creato' : ' · non ancora creato'}</small></span>
         <span class="row-detail ${st.scheduled ? 'ok' : 'ko'}">${st.scheduled ? icon('check') : icon('calendar')}</span></button></div>` : ''}
       <p class="form-error" hidden></p>
       <div class="dialog-actions">
@@ -278,7 +277,6 @@ function openDeadline(d, isNew = false) {
       date,
       leadDays: Number(form.elements.lead.value),
       repeatMonths: isDoc ? 0 : Number(form.elements.repeat.value),
-      mode: form.elements.mode ? (form.elements.mode.value || null) : (cur.mode || null),
       note: isDoc ? '' : form.elements.note.value,
     };
     if (cur.date !== date || cur.repeatMonths !== next.repeatMonths || cur.leadDays !== next.leadDays) { next.reminder = { scheduledFor: null }; next.snooze = null; next.doneAt = null; }
@@ -333,7 +331,7 @@ function openImportPlan(a) {
         ${plan.every === 'custom' ? html`<label class="field field-row"><span>Ogni quanti giorni</span><input class="text" data-f="days" inputmode="numeric" value="${plan.days}"></label>` : ''}
         ${['settimana', 'mese', 'trimestre'].includes(plan.every) ? html`<label class="field field-row"><span>Quando</span><select data-f="day">${dayOpts.map(([v, l]) => html`<option value="${v}" ${String(plan.day ?? '') === v ? 'selected' : ''}>${l}</option>`)}</select></label>` : ''}
       </div>
-      <p class="group-footer">L'ora è quella scelta in Impostazioni › Avvisi e promemoria (${R.alertSettings().hour}).</p>
+      <p class="group-footer">L'ora è quella scelta in Impostazioni › Avvisi (${R.alertSettings().hour}).</p>
       <div class="dialog-actions">
         <button type="button" class="btn" data-now>${icon('upload')}<span>Carica ora</span></button>
         ${st.due ? html`<button type="button" class="btn secondary" data-sched>${st.scheduled ? 'Crea di nuovo l\'avviso' : 'Crea l\'avviso'} per il ${fmtShort(st.due < today() ? today() : st.due)}</button>

@@ -12,8 +12,9 @@ Il brief completo è in `Progetto Finanze Personali – brief per Claude Code.do
 | 1 | Fondamenta e sicurezza: PWA, design, barra personalizzabile, cifratura, sblocco con Face ID e password, chiave di recupero, backup cifrato, palette | fatta |
 | 2 | Movimenti: import PDF Banca di Piacenza (pdf.js), categorie, aree, regole, swipe, divisione, tag, Home con dati veri | fatta |
 | 3 | BPER, Revolut, CSV universale con modelli, giroconti, contanti, ciambella del patrimonio | fatta |
-| 4 | Abbonamenti (riconoscimento, proposti, avvisi), scadenzario, documenti personali, promemoria estratti conto, avvisi via Comandi Rapidi | **fatta, da provare** |
-| 5–10 | Vedi il brief | da fare |
+| 4 | Abbonamenti (riconoscimento, proposti, avvisi), scadenzario, documenti personali, promemoria estratti conto, avvisi nel Calendario (file .ics) | fatta |
+| 5 | Fondi vincolati e casse comuni (saldo reale, rendiconto PDF/CSV, ricevute), spese divise e «chi deve cosa», budget per area e categoria, accantonamenti, previsione di fine mese | **fatta, da provare** |
+| 6–10 | Vedi il brief | da fare |
 
 ## Scelte tecniche
 
@@ -24,7 +25,9 @@ Il brief completo è in `Progetto Finanze Personali – brief per Claude Code.do
   - in memoria resta solo mentre l'app è sbloccata; il blocco ricarica la pagina.
 - **Backup** (`js/backup.js`): un file `.json` cifrato. «Salva backup» lo salva con il foglio di condivisione (iPhone) o con «Salva con nome» (computer). «Aggiorna file» lo unisce: vince la modifica più recente.
 - **Offline**: `sw.js` mette in cache tutti i file dell'app. Quando si pubblica una nuova versione, aumentare `VERSION` in `sw.js` e aggiungere eventuali file nuovi alla lista `ASSETS`.
-- **Avvisi** (`js/reminders.js`): senza server non ci sono notifiche push. L'app apre `shortcuts://run-shortcut?name=<comando>&input=text&text=<testo>`, dove il testo è «titolo – 1 dicembre 2026 alle 09:00» (titolo minimo, senza importi). C'è un Comando Rapido per modalità («Finanze Calendario», «Finanze Promemoria», «Finanze Calendario e Promemoria», «Finanze Promemoria e Calendario»), ognuno di 2-3 azioni: «Ottieni date» dal testo, poi «Aggiungi nuovo evento» e/o «Aggiungi nuovo promemoria». La guida passo passo è nell'app: Impostazioni › Avvisi e promemoria. In alternativa (impostazione «File calendario») ogni avviso è un file `.ics` con notifica, che può ripetersi da solo (RRULE); va solo nel Calendario, non nei Promemoria.
+- **Avvisi** (`js/reminders.js`): senza server non ci sono notifiche push. Ogni avviso è un file calendario `.ics` (evento con notifica, `VALARM`) che l'iPhone aggiunge al Calendario con un tocco; quelli che si ripetono usano `RRULE`. Titoli minimi, senza importi. Comandi Rapidi è stato provato e tolto: su iOS 26 l'azione «Aggiungi promemoria» rifiutava l'orario dell'avviso.
+- **Soldi non miei e quote** (`js/data/model.js` › `myParts`): i movimenti pagati con un fondo vincolato, i versamenti nel fondo e i rimborsi di spese divise non contano nelle entrate e uscite; di una spesa divisa conta solo la mia quota. Lo spendibile (`js/data/plan.js`) toglie dai saldi i fondi vincolati, gli accantonamenti e, se scelto, le uscite fisse ancora da pagare nel mese.
+- **Ricevute** (`js/data/files.js`): foto ridotte a 1600 px e PDF fino a 6 MB, salvati cifrati come gli altri dati (e quindi anche nel backup).
 - **Sicurezza della pagina**: Content-Security-Policy restrittiva in `index.html` (solo script locali, nessuna connessione esterna per ora). Il testo inserito nelle pagine passa sempre dal template `html``…``, che fa l'escape.
 
 ## Provare sul computer

@@ -1,25 +1,11 @@
-// Promemoria nel Calendario e nei Promemoria di iPhone, creati da un Comando Rapido.
-// Senza server l'app non può mandare notifiche: apre Comandi Rapidi con un link
-// shortcuts://run-shortcut e gli passa un testo semplice, per esempio
-// «Rinnovo abbonamento – 01/12/2026 09:00». Il Comando Rapido ricava la data dal testo
-// (azione «Ottieni date») e usa il testo come titolo. I titoli sono minimi e senza importi.
-// C'è un Comando Rapido per ogni modalità, così ognuno ha solo 2 o 3 azioni.
+// Avvisi nel Calendario di iPhone con un file calendario (.ics).
+// Senza server l'app non può mandare notifiche: ogni avviso è un evento con notifica che
+// il Calendario aggiunge con un tocco, e che può ripetersi da solo (es. ogni mese).
+// I titoli sono minimi e senza importi.
 
 import * as S from './store.js';
-import { fromIso } from './dates.js';
-
-// Le quattro modalità del brief: dove va la notifica e dove resta solo il promemoria scritto.
-export const MODES = [
-  { id: 'cal', label: 'Solo Calendario', desc: 'Un evento nel Calendario, con notifica.', shortcut: 'Finanze Calendario', steps: [['evento', true]] },
-  { id: 'rem', label: 'Solo Promemoria', desc: 'Un promemoria, con notifica.', shortcut: 'Finanze Promemoria', steps: [['promemoria', true]] },
-  { id: 'cal+rem', label: 'Calendario + notifica dai Promemoria', desc: 'Evento nel Calendario senza notifica; la notifica arriva dai Promemoria.', shortcut: 'Finanze Calendario e Promemoria', steps: [['evento', false], ['promemoria', true]] },
-  { id: 'rem+cal', label: 'Promemoria + notifica dal Calendario', desc: "Promemoria scritto senza notifica; la notifica arriva dall'evento del Calendario.", shortcut: 'Finanze Promemoria e Calendario', steps: [['promemoria', false], ['evento', true]] },
-];
-export const modeById = (id) => MODES.find((m) => m.id === id) || MODES[0];
 
 export const DEFAULT_ALERTS = {
-  via: 'shortcuts',   // 'shortcuts' (Comandi Rapidi) oppure 'ics' (file calendario)
-  mode: 'cal',
   hour: '09:00',
   namesInTitle: false,
   importEvery: 'mese',
@@ -33,36 +19,7 @@ export async function updateAlertSettings(patch) {
   await S.put('settings', 'alerts', { ...(S.get('settings', 'alerts') || {}), ...patch });
 }
 
-// Testo passato al Comando Rapido: titolo e data scritta per esteso, per esempio
-// «Rinnovo abbonamento – 10 novembre 2026 alle 09:00». Con «gg/mm/aaaa hh:mm» iOS
-// riconosceva a volte solo il giorno, e il promemoria rifiutava l'avviso senza ora.
-const MONTHS = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre'];
-export function payload({ title, date }) {
-  const st = alertSettings();
-  const d = fromIso(date);
-  return `${title} – ${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()} alle ${st.hour || '09:00'}`;
-}
-
-export function shortcutUrl(opts) {
-  const m = modeById(opts.mode || alertSettings().mode);
-  return `shortcuts://run-shortcut?name=${encodeURIComponent(m.shortcut)}&input=text&text=${encodeURIComponent(payload(opts))}`;
-}
-
-// Apre Comandi Rapidi. Restituisce il link (utile per le prove sul computer).
-export function runShortcut(opts) {
-  const url = shortcutUrl(opts);
-  const a = document.createElement('a');
-  a.href = url;
-  a.rel = 'noopener';
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  return url;
-}
-
 // ---------------------------------------------------------------- File calendario (.ics)
-// Alternativa senza Comandi Rapidi: un evento con notifica che il Calendario importa con un tocco.
-// Può ripetersi da solo (es. ogni mese), ma non crea promemoria nell'app Promemoria.
 // `repeat`: { freq: 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY', interval } oppure null.
 
 const icsText = (s) => String(s).replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');

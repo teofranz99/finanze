@@ -20,7 +20,6 @@ import * as P from '../passkey.js';
 import * as B from '../backup.js';
 import * as DB from '../db.js';
 import { alertsSettingsPage } from './avvisi.js';
-import { alertSettings } from '../reminders.js';
 
 export function settingsView(el, rest) {
   switch (rest[0]) {
@@ -56,7 +55,7 @@ function rootPage(el) {
             navRow({ href: '#/impostazioni/barra', icon: 'tabbar', color: 'var(--s1)', label: 'Barra delle sezioni' }),
             navRow({ href: '#/impostazioni/sicurezza', icon: 'lock', color: 'var(--s2)', label: 'Sicurezza e sblocco' }),
             navRow({ href: '#/impostazioni/backup', icon: 'cloud-up', color: 'var(--s5)', label: 'Backup e sincronizzazione', detail: lastBackup ? relativeTime(lastBackup) : 'Mai' }),
-            navRow({ href: '#/impostazioni/avvisi', icon: 'calendar', color: 'var(--s8)', label: 'Avvisi e promemoria', detail: alertSettings().via === 'ics' ? 'File calendario' : 'Comandi Rapidi' }),
+            navRow({ href: '#/impostazioni/avvisi', icon: 'calendar', color: 'var(--s8)', label: 'Avvisi', detail: 'Calendario' }),
           ],
         })}
         ${group({

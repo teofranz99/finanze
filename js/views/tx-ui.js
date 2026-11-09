@@ -10,6 +10,7 @@ import * as S from '../store.js';
 import { readStatement, plan as planImport, commit as commitImport, saveTemplateAndApply } from '../import/importer.js';
 import { applyTemplate, validateMapping } from '../import/template.js';
 import { subForTx } from '../data/subs.js';
+import { fund } from '../data/funds.js';
 
 // ---------------------------------------------------------------- Formattazione
 export function txIcon(t, big = false) {
@@ -20,6 +21,7 @@ export function txIcon(t, big = false) {
 }
 
 export function amountClass(t) {
+  if (t.fundId || t.repays?.length) return 'neutral';
   const k = M.kindOf(t);
   if (k === 'giroconto' || k === 'investimento') return 'neutral';
   return t.cents > 0 ? 'positive' : '';
@@ -39,7 +41,21 @@ export function dayLabel(iso) {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
+// Fondo, spesa divisa o rimborso: si vede nella lista dei movimenti.
+function linkNote(t) {
+  if (t.fundId) return `Fondo ${fund(t.fundId)?.name || ''}`.trim();
+  if (t.share?.people?.length) return `Divisa · tua quota ${formatCents(t.share.mine)}`;
+  if (t.repays?.length) return 'Rimborso di una spesa divisa';
+  return '';
+}
+
 export function subtitle(t) {
+  const note = linkNote(t);
+  const base = baseSubtitle(t);
+  return note ? `${note} · ${base}` : base;
+}
+
+function baseSubtitle(t) {
   if (t.splits?.length) return `Diviso in ${t.splits.length} parti`;
   if (t.transferAccountId && M.account(t.transferAccountId)) {
     return `Giroconto ${t.cents < 0 ? 'verso' : 'da'} ${M.account(t.transferAccountId).name}`;
@@ -175,13 +191,18 @@ export async function setArea(t, areaId) {
 export function openTxDetail(id) {
   const s = openSheet(html`<div class="tx-detail"></div>`, { className: 'tall' });
   const root = s.el.querySelector('.tx-detail');
-  const off = S.subscribe((col) => { if (col === 'tx' || col === 'subs' || col === '*') draw(); });
+  const off = S.subscribe((col) => { if (['tx', 'subs', 'funds', '*'].includes(col)) draw(); });
   s.closed.then(off);
+
+  // Le righe di fondi e spese divise arrivano da fondi.js, caricato al primo uso.
+  let F = null;
+  import('./fondi.js').then((m) => { F = m; draw(); });
 
   function draw() {
     const t = M.tx(id);
     if (!t) { s.close(); return; }
     const acc = M.account(t.accountId);
+    const extraRows = F ? F.txRows(t) : '';
     const d = new Date(`${t.date}T12:00:00`);
     root.innerHTML = String(html`
       <div class="txd-head">
@@ -209,7 +230,8 @@ export function openTxDetail(id) {
           <span class="row-label">${t.splits?.length ? 'Modifica la divisione' : 'Dividi tra aree o categorie'}</span>
           <span class="chev">${icon('chevron-right')}</span>
         </button>
-        ${t.cents < 0 ? subRow(t) : ''}
+        ${t.cents < 0 && !t.fundId ? subRow(t) : ''}
+        ${extraRows}
       </div>
       ${t.splits?.length ? html`<div class="split-summary">${t.splits.map((p) => html`
         <div><span>${M.category(p.categoryId).name}${p.areaId ? ` · ${M.area(p.areaId)?.name || ''}` : ''}</span><b>${formatCents(p.cents)}</b></div>`)}</div>` : ''}
@@ -240,6 +262,7 @@ export function openTxDetail(id) {
 
   function wire(t) {
     root.querySelector('[data-act=rename]').onclick = () => renameTx(id);
+    root.querySelectorAll('[data-fx]').forEach((b) => { b.onclick = () => F?.txAction(M.tx(id), b.dataset.fx); });
     const sb = root.querySelector('[data-act=sub]');
     // Import al momento del tocco: abbonamenti.js usa a sua volta questo file.
     if (sb) sb.onclick = async () => { const A = await import('./abbonamenti.js'); A.markTxAsSub(M.tx(id)); };
